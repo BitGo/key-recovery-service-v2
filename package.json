@@ -1,5 +1,5 @@
 {
-  "name": "key-recovery-service",
+  "name": "key-recovery-service-v2",
   "version": "0.0.3",
   "description": "Key service implementing KRS protocol to provision xpubs for backup use",
   "main": "index.js",
@@ -16,23 +16,23 @@
     "supertest-as-promised": "2.0.2"
   },
   "dependencies": {
-    "argparse": "^1.0.2",
+    "argparse": "^1.0.10",
     "bitcoinjs-lib": "https://github.com/dabura667/bitcoinjs-lib.git#bcash330",
-    "bitcoinjs-message": "2.0.0",
-    "body-parser": "1.13.2",
-    "express": "4.13.1",
-    "lodash": "3.10.0",
-    "moment": "2.10.6",
-    "mongoose": "4.0.5",
-    "mongoose-q": "0.0.17",
-    "morgan": "1.6.1",
-    "node-jsrender": "1.0.6",
-    "nodemailer": "1.4.0",
-    "nodemailer-smtp-transport": "1.0.3",
-    "prompt-sync": "^1.0.0",
-    "q": "1.4.1",
-    "superagent": "^1.4.0",
-    "superagent-as-promised": "3.2.0",
-    "validator": "4.0.2"
+    "bitcoinjs-message": "^2.0.0",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.3",
+    "lodash": "^4.17.10",
+    "moment": "^2.22.2",
+    "mongoose": "^5.2.4",
+    "mongoose-q": "^0.1.0",
+    "morgan": "^1.9.0",
+    "node-jsrender": "^1.0.9",
+    "nodemailer": "^4.6.7",
+    "nodemailer-smtp-transport": "^2.7.4",
+    "prompt-sync": "^4.1.6",
+    "q": "^1.5.1",
+    "superagent": "^3.8.3",
+    "superagent-as-promised": "^4.0.0",
+    "validator": "^10.4.0"
   }
 }
