@@ -15,5 +15,6 @@ masterKeySchema.methods = {
 };
 
 masterKeySchema.index({ customerId: 1, coin: 1 }, { unique: true });
+masterKeySchema.index({ xpub: 1 }, { unique: true });
 
 module.exports = mongoose.connection.model('masterKey', masterKeySchema);

@@ -17,7 +17,6 @@ walletKeySchema.methods = {
   }
 };
 
-walletKeySchema.index({ masterKey: 1, path: 1 }, { unique: true });
 walletKeySchema.index({ xpub: 1 }, { unique: true });
 walletKeySchema.index({ userEmail: 1 });
 
