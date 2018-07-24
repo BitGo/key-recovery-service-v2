@@ -37,7 +37,7 @@ function saveKeys(xpubs) {
   const keys = [];
 
   for (const xpub of xpubs) {
-    if (!xpub.startsWith('xpub') || !xpub.length === 111) {
+    if (!xpub.startsWith('xpub') || xpub.length !== 111) {
       console.log(`${xpub} is not a valid public key. Skipping`);
       continue;
     }
