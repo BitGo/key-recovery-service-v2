@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 const _ = require('lodash');
 
 const masterKeySchema = new mongoose.Schema({
-  coin: { type: mongoose.Types.String },
-  customerId: { type: mongoose.Types.String },
-  xpub: { type: mongoose.Types.String },
-  keyCount: { type: mongoose.Types.Number }
+  coin: { type: String },
+  customerId: { type: String },
+  xpub: { type: String },
+  keyCount: { type: Number }
 });
 
 masterKeySchema.methods = {

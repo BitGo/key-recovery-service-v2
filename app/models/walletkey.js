@@ -3,11 +3,11 @@ const _ = require('lodash');
 
 const walletKeySchema = new mongoose.Schema({
   masterKey: { type: mongoose.Types.ObjectId },
-  path: { type: mongoose.Types.String },
-  xpub: { type: mongoose.Types.String },
-  userEmail: { type: mongoose.Types.String },
-  notificationUrl: { type: mongoose.Types.String },
-  verificationInfo: { type: mongoose.Types.String },
+  path: { type: String },
+  xpub: { type: String },
+  userEmail: { type: String },
+  notificationUrl: { type: String },
+  verificationInfo: { type: String },
   custom: {}
 });
 
