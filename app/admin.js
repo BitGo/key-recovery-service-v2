@@ -11,6 +11,7 @@ const prova = require('prova-lib');
 
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
+const WalletKey = require('./models/walletkey.js');
 
 const parser = new ArgumentParser({
   version: pjson.version,
@@ -45,6 +46,21 @@ deriveKeyCommand.addArgument(
   {
     action: 'store',
     help: 'derivation path of the wallet key (starts with "m/")'
+  }
+);
+
+const verificationParser = subparsers.addParser('verification', { addHelp: true });
+const verificationCommands = verificationParser.addSubparsers({
+  title: 'verification commands',
+  dest: 'cmd2'
+});
+
+const getVerificationCommand = verificationCommands.addParser('get', { addHelp: true });
+getVerificationCommand.addArgument(
+  ['xpub'],
+  {
+    action: 'store',
+    help: 'public key of the wallet (starts with "xpub")'
   }
 );
 
@@ -119,12 +135,39 @@ const handleDeriveKey = function(args) {
   }
 };
 
+const handleVerificationGet = co(function *(args) {
+  const xpub = args.xpub;
+
+  const key = yield WalletKey.findOne({ xpub }).lean();
+
+  if (key === null) {
+    console.log(`Unable to find wallet key: ${xpub}`);
+    return;
+  }
+
+  // if there are multiple lines, this aligns each line under the first line
+  const formattedVerificationInfo = key.verificationInfo.replace(/\n/g, '\n\t\t\t');
+
+  console.log(`==== VERIFICATION INFO FOR KEY ${xpub} ====`);
+  console.log(`User Email:\t\t${key.userEmail}`);
+  console.log(`Verification Info:\t${formattedVerificationInfo}`);
+});
+
+const handleVerification = co(function *(args) {
+  switch (args.cmd2) {
+    case 'get':
+      yield handleVerificationGet(args);
+  }
+});
+
 const run = co(function *() {
   const args = parser.parseArgs();
 
   switch (args.cmd) {
     case 'import':
       yield handleImportKeys(args);
+    case 'verification':
+      yield handleVerification(args);
   }
 });
 
