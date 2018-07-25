@@ -12,7 +12,6 @@ var Q = require('q');
 var _ = require('lodash');
 
 var utils = require('./utils');
-var Key = require('./models/key');
 var RecoveryRequest = require('./models/recoveryrequest');
 
 if (process.config.masterxpub.substr(0, 4) !== 'xpub') {
