@@ -33,7 +33,7 @@ importKeys.addArgument(
   }
 );
 
-function saveKeys(xpubs) {
+const saveKeys = co(function *(xpubs) {
   const keys = [];
 
   for (const xpub of xpubs) {
@@ -48,17 +48,28 @@ function saveKeys(xpubs) {
     });
   }
 
+  if (keys.length === 0) {
+    console.log('No valid public keys. Please make sure all public keys begin with "xpub" and are 111 characters in length.');
+    return;
+  }
+
   console.log(`Found ${keys.length} valid public keys. Pushing to database.`);
 
-  MasterKey.insertMany(keys).then(function() {
-    console.log('Successfully imported all public keys.');
-  }).catch(function(e) {
-    console.log('FAILED to import all public keys. This is usually caused by trying to import a public key that already exists in the database.');
-    console.log(e);
-  });
-}
+  try {
+    yield MasterKey.insertMany(keys);
+    console.log('Successfully imported public keys.');
 
-function handleImportKeys(args) {
+    const totalKeys = yield MasterKey.estimatedDocumentCount();
+    const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null });
+
+    console.log(`New capacity: ${availableKeys} available keys out of ${totalKeys} total keys.`);
+  } catch (e) {
+    console.log(e.message);
+    console.log('FAILED to import all public keys. This is usually caused by trying to import a public key that already exists in the database.');
+  }
+});
+
+const handleImportKeys = co(function *(args) {
   const path = args.file;
   if (path === null) {
     throw new Error('please specify the path to a CSV file containing the public keys to import');
@@ -71,15 +82,24 @@ function handleImportKeys(args) {
     .on('data', function(xpub) {
       xpubs.push(xpub);
     })
-    .on('end', function() {
+    .on('end', co(function *() {
       xpubs = _.flatten(xpubs); // the CSV parser creates a 2d array of elements if multiple lines are present
-      saveKeys(xpubs);
-    });
-}
+      yield saveKeys(xpubs);
+    }));
+});
 
-const args = parser.parseArgs();
+const run = co(function *() {
+  const args = parser.parseArgs();
 
-switch (args.cmd) {
-  case 'import':
-    handleImportKeys(args);
-}
+  switch (args.cmd) {
+    case 'import':
+      yield handleImportKeys(args);
+  }
+});
+
+Promise.try(function () {
+  return run();
+}).catch( function(err) {
+  console.log(err);
+})
+
