@@ -37,4 +37,34 @@ describe('Offline Admin Tool', function() {
       });
     });
   });
+
+  describe('BIP32 child key derivation', function() {
+    // from https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki test vector 2 chain m
+    const MASTER_XPUB = 'xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB';
+
+    describe('failure', function() {
+      it('should fail with an invalid xpub', function() {
+        const BAD_XPUB = 'xpub55555';
+
+        (function() { admin.deriveKey(BAD_XPUB, 'm/0') }).should.throw(Error);
+      });
+
+      it('should fail with an invalid derivation path', function() {
+        (function() { admin.deriveKey(MASTER_XPUB, 'derivation path' )}).should.throw(Error);
+      });
+
+      it('should fail if trying to derive hardened index with xpub', function() {
+        (function() { admin.deriveKey(MASTER_XPUB, 'm/0\'' )}).should.throw(Error);
+      })
+    });
+
+    describe('success', function() {
+      // test vector 2 from https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+      it('should find m/0 of test vector 2', function() {
+        const M_0 = 'xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH';
+
+        admin.deriveKey(MASTER_XPUB, 'm/0').should.equal(M_0);
+      })
+    })
+  })
 });
