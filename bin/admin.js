@@ -33,30 +33,31 @@ importKeys.addArgument(
   }
 );
 
-const saveKeys = co(function *(xpubs) {
-  const keys = [];
+const validateXpub = function(xpub) {
+  const isValidXpub = /^xpub[1-9a-km-zA-HJ-Z]{107}$/.test(xpub);
 
-  for (const xpub of xpubs) {
-    if (!xpub.startsWith('xpub') || xpub.length !== 111) {
-      console.log(`${xpub} is not a valid public key. Skipping`);
-      continue;
-    }
-
-    keys.push({
-      xpub: xpub,
-      keyCount: 0
-    });
+  if (!isValidXpub) {
+    console.log(`Xpub ${xpub} is not a valid extended public key.`);
   }
 
-  if (keys.length === 0) {
+  return isValidXpub;
+}
+
+const saveKeys = co(function *(xpubs) {
+  const xpubDocs = xpubs.filter(validateXpub).map((xpub) => ({
+    xpub: xpub,
+    keyCount: 0
+  }));
+
+  if (xpubDocs.length === 0) {
     console.log('No valid public keys. Please make sure all public keys begin with "xpub" and are 111 characters in length.');
     return;
   }
 
-  console.log(`Found ${keys.length} valid public keys. Pushing to database.`);
+  console.log(`Found ${xpubDocs.length} valid public keys. Pushing to database.`);
 
   try {
-    yield MasterKey.insertMany(keys);
+    yield MasterKey.insertMany(xpubDocs);
     console.log('Successfully imported public keys.');
 
     const totalKeys = yield MasterKey.estimatedDocumentCount();
@@ -103,3 +104,5 @@ Promise.try(function () {
   console.log(err);
 })
 
+// For unit testing of functions
+module.exports = { validateXpub };
