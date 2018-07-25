@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const _ = require('lodash');
 
 const walletKeySchema = new mongoose.Schema({
-  masterKey: { type: mongoose.Types.ObjectId },
+  masterKey: { type: String },
   path: { type: String },
   xpub: { type: String },
   userEmail: { type: String },
