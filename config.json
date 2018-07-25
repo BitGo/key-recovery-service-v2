@@ -3,7 +3,7 @@
   "serviceurl": "http://keyrecoveryservice.yourdomain.com/",
   "host": "0.0.0.0",
   "port": 6833,
-  "adminemail": "benchan@bitgo.com",
+  "adminemail": "davidcruz@bitgo.com",
   "masterxpub": "xpub661MyMwAqRbcGnYJHEwr8CPAr6hSXC8xiMjxQi39EKyfBD99rJb7kQVqce2EFDTZutdaR2rb92xpULJqPjarYCsybvzY9AfQCkkEii6XE54",
   "mongouri": "mongodb://localhost/key-recovery-service",
   "provider": {
@@ -15,8 +15,8 @@
     "host": "smtp.mailgun.org",
     "port": 587,
     "auth": {
-      "user": "postmaster@sandbox76422cdc4433464496a6ec2fc047483b.mailgun.org",
-      "pass": "c977ad811d6ca46cd24e59238abb4e78"
+      "user": "postmaster@sandbox61cc580484684b1e8759802a5ff02630.mailgun.org",
+      "pass": "98afb1ed52a1ed8d41dfb057940f60c0-3b1f59cf-357ce9ae"
     }
   },
   "requesterAuth": {
