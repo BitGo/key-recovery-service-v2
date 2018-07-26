@@ -1,17 +1,14 @@
 var Q = require('q');
 var nodemailer = require('nodemailer');
 var smtpTransport = require('nodemailer-smtp-transport');
-var jsrender = require('node-jsrender');
+var jsrender = require('jsrender');
+
+process.config = require('../config');
 
 if (process.config.mail) {
   // create reusable transporter object using SMTP transport
   var mailTransport = nodemailer.createTransport(smtpTransport(process.config.mail));
   var sendMail = Q.nbind(mailTransport.sendMail, mailTransport);
-
-  // prepare templates using jsrender
-  jsrender.loadFileSync('newkeytemplate', './app/templates/newkeytemplate.html');
-  jsrender.loadFileSync('recoveryusertemplate', './app/templates/recoveryusertemplate.html');
-  jsrender.loadFileSync('recoveryadmintemplate', './app/templates/recoveryadmintemplate.html');
 }
 
 // Error response container for handling by the promise wrapper
@@ -77,7 +74,7 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
     attachments: attachments
   };
 
-  mailOptions.html = jsrender.render[template](templateParams);
+  mailOptions.html = jsrender.templates(`./app/templates/${template}.html`).render(templateParams);
 
   // send mail with defined transport object
   return sendMail(mailOptions);
