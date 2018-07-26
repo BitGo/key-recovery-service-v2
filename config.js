@@ -1,4 +1,4 @@
-{
+module.exports = {
   "name": "Friendly Key Backup Service",
   "serviceurl": "http://keyrecoveryservice.yourdomain.com/",
   "host": "0.0.0.0",
@@ -15,8 +15,8 @@
     "host": "smtp.mailgun.org",
     "port": 587,
     "auth": {
-      "user": "postmaster@sandbox61cc580484684b1e8759802a5ff02630.mailgun.org",
-      "pass": "98afb1ed52a1ed8d41dfb057940f60c0-3b1f59cf-357ce9ae"
+      "user": process.env.MAILGUN_USER,
+      "pass": process.env.MAILGUN_PASS
     }
   },
   "requesterAuth": {
