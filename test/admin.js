@@ -1,6 +1,6 @@
 const should = require('should');
 
-const admin = require('../bin/admin.js');
+const admin = require('../app/admin.js');
 
 describe('Offline Admin Tool', function() {
   describe('Xpub validation', function() {
