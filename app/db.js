@@ -6,6 +6,6 @@ if (process.env.MONGOLAB_URI) {
 }
 
 // make a new database connection and define the collections
-mongoose.connect(process.config.mongouri);
+mongoose.connect(process.config.mongouri, { useNewUrlParser: true });
 
 module.exports = mongoose;
