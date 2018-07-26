@@ -11,7 +11,7 @@ module.exports = {
     "secret": "youshouldchangethis"
   },
   "mail": {
-    "fromemail": "XPub.XYZ <keyserver@xpub.xyz>",
+    "fromemail": "KRS.XYZ <krs@example.com>",
     "host": "smtp.mailgun.org",
     "port": 587,
     "auth": {
