@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "argparse": "^1.0.10",
-    "bitcoinjs-lib": "https://github.com/dabura667/bitcoinjs-lib.git#bcash330",
     "bitcoinjs-message": "^2.0.0",
     "body-parser": "^1.18.3",
     "csv-parse": "^2.5.0",
@@ -32,6 +31,7 @@
     "nodemailer": "^4.6.7",
     "nodemailer-smtp-transport": "^2.7.4",
     "prompt-sync": "^4.1.6",
+    "prova-lib": "^0.2.9",
     "q": "^1.5.1",
     "superagent": "^3.8.3",
     "superagent-as-promised": "^4.0.0",

@@ -7,6 +7,7 @@ const ArgumentParser = require('argparse').ArgumentParser;
 const pjson = require('../package.json');
 const fs = require('fs');
 const csvParser = require('csv-parse');
+const prova = require('prova-lib');
 
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
@@ -28,6 +29,22 @@ importKeys.addArgument(
   {
     action: 'store',
     help: 'path to a CSV list of public keys'
+  }
+);
+
+const deriveKeyCommand = subparsers.addParser('derive', { addHelp: true });
+deriveKeyCommand.addArgument(
+  [ 'master' ],
+  {
+    action: 'store',
+    help: 'xpub of the master key (starts with "xpub")'
+  }
+);
+deriveKeyCommand.addArgument(
+  [ 'path' ],
+  {
+    action: 'store',
+    help: 'derivation path of the wallet key (starts with "m/")'
   }
 );
 
@@ -87,6 +104,21 @@ const handleImportKeys = co(function *(args) {
     }));
 });
 
+const deriveKey = function(masterKey, derivationPath) {
+  const masterNode = prova.HDNode.fromBase58(masterKey);
+
+  return masterNode.derivePath(derivationPath).toBase58();
+};
+
+const handleDeriveKey = function(args) {
+  try {
+    const childKey = deriveKey(args.master, args.path);
+    console.log(` = ${childKey}`);
+  } catch (e) {
+    console.log(e.message);
+  }
+};
+
 const run = co(function *() {
   const args = parser.parseArgs();
 
@@ -97,4 +129,4 @@ const run = co(function *() {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateXpub };
+module.exports = { run, validateXpub, deriveKey };
