@@ -5,7 +5,7 @@ module.exports = {
   "port": 6833,
   "adminemail": "davidcruz@bitgo.com",
   "masterxpub": "xpub661MyMwAqRbcGnYJHEwr8CPAr6hSXC8xiMjxQi39EKyfBD99rJb7kQVqce2EFDTZutdaR2rb92xpULJqPjarYCsybvzY9AfQCkkEii6XE54",
-  "mongouri": "mongodb://localhost/key-recovery-service",
+  "mongouri": "mongodb://localhost:27017/key-recovery-service",
   "provider": {
     "id": "bitgo",
     "secret": "youshouldchangethis"
