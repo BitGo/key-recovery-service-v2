@@ -64,6 +64,23 @@ getVerificationCommand.addArgument(
   }
 );
 
+const setVerificationCommand = verificationCommands.addParser('set', { addHelp: true });
+setVerificationCommand.addArgument(
+  ['xpub'],
+  {
+    action: 'store',
+    help: 'public key of the wallet (starts with "xpub")'
+  }
+);
+setVerificationCommand.addArgument(
+  ['info'],
+  {
+    action: 'store',
+    nargs: '+',
+    help: 'verification information to store with the wallet\'s backup key'
+  }
+);
+
 const validateXpub = function(xpub) {
   const isValidXpub = /^xpub[1-9a-km-zA-HJ-Z]{107}$/.test(xpub);
 
@@ -153,10 +170,33 @@ const handleVerificationGet = co(function *(args) {
   console.log(`Verification Info:\t${formattedVerificationInfo}`);
 });
 
+const handleVerificationSet = co(function *(args) {
+  const key = yield WalletKey.findOne({ xpub: args.xpub });
+
+  if (key === null) {
+    console.log(`Unable to find wallet key: ${args.xpub}`);
+    return;
+  }
+
+  key.set('verificationInfo', args.info.join(' '));
+
+  try {
+    yield key.save();
+    console.log(`Successfully updated verification info for key ${args.xpub}`);
+  } catch (e) {
+    console.log(e.message);
+    console.log('FAILED to update verification info on key.');
+  }
+});
+
 const handleVerification = co(function *(args) {
   switch (args.cmd2) {
     case 'get':
       yield handleVerificationGet(args);
+      break;
+    case 'set':
+      yield handleVerificationSet(args);
+      break;
   }
 });
 
@@ -166,8 +206,13 @@ const run = co(function *() {
   switch (args.cmd) {
     case 'import':
       yield handleImportKeys(args);
+      break;
+    case 'derive':
+      yield handleDeriveKey(args);
+      break;
     case 'verification':
       yield handleVerification(args);
+      break;
   }
 });
 
