@@ -1,9 +1,9 @@
-{
+module.exports = {
   "name": "Friendly Key Backup Service",
   "serviceurl": "http://keyrecoveryservice.yourdomain.com/",
   "host": "0.0.0.0",
   "port": 6833,
-  "adminemail": "benchan@bitgo.com",
+  "adminemail": "davidcruz@bitgo.com",
   "masterxpub": "xpub661MyMwAqRbcGnYJHEwr8CPAr6hSXC8xiMjxQi39EKyfBD99rJb7kQVqce2EFDTZutdaR2rb92xpULJqPjarYCsybvzY9AfQCkkEii6XE54",
   "mongouri": "mongodb://localhost/key-recovery-service",
   "provider": {
@@ -11,12 +11,12 @@
     "secret": "youshouldchangethis"
   },
   "mail": {
-    "fromemail": "XPub.XYZ <keyserver@xpub.xyz>",
+    "fromemail": "KRS.XYZ <krs@example.com>",
     "host": "smtp.mailgun.org",
     "port": 587,
     "auth": {
-      "user": "postmaster@sandbox76422cdc4433464496a6ec2fc047483b.mailgun.org",
-      "pass": "c977ad811d6ca46cd24e59238abb4e78"
+      "user": process.env.MAILGUN_USER,
+      "pass": process.env.MAILGUN_PASS
     }
   },
   "requesterAuth": {
