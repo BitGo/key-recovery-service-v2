@@ -1,4 +1,4 @@
-var mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 // if running in an environment with mongolab, go ahead and use it
 if (process.env.MONGOLAB_URI) {

@@ -1,37 +1,35 @@
-var HDNode = require('./lib/hdnode');
-var crypto = require('crypto');
-var assert = require('assert');
-var mongoose = require('mongoose');
-var moment = require('moment');
+const crypto = require('crypto');
+const mongoose = require('mongoose');
+const moment = require('moment');
 
-var request = require('superagent');
+const request = require('superagent');
 require('superagent-as-promised')(request);
 
-var validator = require('validator');
-var Q = require('q');
-var _ = require('lodash');
+const validator = require('validator');
+const Q = require('q');
+const _ = require('lodash');
 
-var utils = require('./utils');
-var RecoveryRequest = require('./models/recoveryrequest');
+const utils = require('./utils');
+const RecoveryRequest = require('./models/recoveryrequest');
 
 if (process.config.masterxpub.substr(0, 4) !== 'xpub') {
   throw new Error('masterxpub must start with "xpub"');
 }
 
-var notifyEndpoint = function(key, state) {
-  var generateHMAC = function(xpub){
-    var hmac = crypto.createHmac('sha256', process.config.provider.secret);
+const notifyEndpoint = function(key, state) {
+  const generateHMAC = function(xpub){
+    const hmac = crypto.createHmac('sha256', process.config.provider.secret);
     hmac.update(xpub);
     return hmac.digest('hex');
   };
 
-  var notificationURL = key.notificationURL;
+  const notificationURL = key.notificationURL;
   if (!notificationURL) {
     return;
   }
-  var userEmail = key.userEmail;
-  var xpub = key.xpub;
-  var hmac = generateHMAC(xpub);
+  const userEmail = key.userEmail;
+  const xpub = key.xpub;
+  const hmac = generateHMAC(xpub);
 
   return request.post(notificationURL)
   .send({
@@ -48,8 +46,6 @@ var notifyEndpoint = function(key, state) {
 };
 
 exports.provisionKey = function(req) {
-
-
   var userEmail = req.body.userEmail;
   if (!userEmail) {
     throw utils.ErrorResponse(400, 'userEmail required');
@@ -215,18 +211,8 @@ exports.requestRecovery = function(req) {
   });
 };
 
-exports.deriveFromPath = function(path) {
-  var masterHDNode = HDNode.fromBase58(process.config.masterxpub);
-  return masterHDNode.deriveFromPath(path).toBase58();
-};
-
-exports.randomPath = function() {
-  function random(i) {
-    var buf = crypto.randomBytes(4);
-    // zero out first bit, since non-hardened indexes can be between 0 and 2^31
-    buf[0] = buf[0] & 0x7f;
-    return buf.readUInt32BE(0);
-  };
-  // in order to get at least 128 bits of entropy, we need 5 31 bit numbers
-  return "m/" + random(0) + "/" + random(1) + "/" + random(2) + "/" + random(3) + "/" + random(4);
-};
+// TODO: this needs to be removed to run, but will be implemented in BG-5835
+// exports.deriveFromPath = function(path) {
+//   var masterHDNode = HDNode.fromBase58(process.config.masterxpub);
+//   return masterHDNode.deriveFromPath(path).toBase58();
+// };

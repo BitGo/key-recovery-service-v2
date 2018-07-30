@@ -1,19 +1,19 @@
-var Q = require('q');
-var nodemailer = require('nodemailer');
-var smtpTransport = require('nodemailer-smtp-transport');
-var jsrender = require('jsrender');
+const Q = require('q');
+const nodemailer = require('nodemailer');
+const smtpTransport = require('nodemailer-smtp-transport');
+const jsrender = require('jsrender');
 
 process.config = require('../config');
 
 if (process.config.mail) {
   // create reusable transporter object using SMTP transport
-  var mailTransport = nodemailer.createTransport(smtpTransport(process.config.mail));
-  var sendMail = Q.nbind(mailTransport.sendMail, mailTransport);
+  const mailTransport = nodemailer.createTransport(smtpTransport(process.config.mail));
+  const sendMail = Q.nbind(mailTransport.sendMail, mailTransport);
 }
 
 // Error response container for handling by the promise wrapper
 exports.ErrorResponse = function(status, result) {
-  var err = new Error('');
+  const err = new Error('');
   err.status = status;
   err.result = result;
   return err;
@@ -35,7 +35,7 @@ exports.promiseWrapper = function(promiseRequestHandler) {
       }
     })
     .catch(function(caught) {
-      var err;
+      let err;
       if (caught instanceof Error) {
         err = caught;
       } else if (typeof caught === 'string') {
@@ -44,14 +44,14 @@ exports.promiseWrapper = function(promiseRequestHandler) {
         err = new Error("(object_error) " + JSON.stringify(caught));
       }
 
-      var message = err.message || 'local error';
+      const message = err.message || 'local error';
       // use attached result, or make one
-      var result = err.result || {error: message};
-      var status = err.status || 500;
+      const result = err.result || { error: message };
+      const status = err.status || 500;
       if (!(status >= 200 && status < 300)) {
         // console.log('error %s: %s', status, err.message);
       }
-      if (status == 500) {
+      if (status === 500) {
         console.log(err.stack);
       }
       res.status(status).send(result);
