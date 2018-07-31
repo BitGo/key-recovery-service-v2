@@ -1,8 +1,15 @@
 const should = require('should');
 
+const testutils = require('./testutils');
 const admin = require('../app/admin.js');
+const MasterKey = require('../app/models/masterkey');
+const WalletKey = require('../app/models/walletkey');
 
 describe('Offline Admin Tool', function() {
+  before(function() {
+    testutils.mongoose.connection.dropDatabase();
+  });
+
   describe('Xpub validation', function() {
     // Xpub importing was tested with a local file with contents: (w/o line breaks)
     // xpub6AHA9hZDN11k2ijHMeS5QqHx2KP9aMBRhTDqANMnwVtdyw2TDYRmF8PjpvwUFcL1Et8Hj59S3gTSMcUQ5gAqTz3Wd8EsMTmF3DChhqPQBnU,
@@ -67,4 +74,26 @@ describe('Offline Admin Tool', function() {
       })
     })
   })
+
+  describe('Verification', function() {
+    before(function() {
+      const key = new WalletKey({
+        xpub: 'xpub6AHA9hZDN11k2ijHMeS5QqHx2KP9aMBRhTDqANMnwVtdyw2TDYRmF8PjpvwUFcL1Et8Hj59S3gTSMcUQ5gAqTz3Wd8EsMTmF3DChhqPQBnU',
+        userEmail: 'tester@bitgo.com',
+        verificationInfo: 'verify user\'s identity by signed letter delivered by carrier pigeon'
+      });
+
+      key.save();
+    });
+
+    it('should fail to retrieve verification info on a non-existent key', function() {
+      admin.run(['verification', 'get', 'xpub6ARXqCvahM4dyWYDSPZMiii32yt3DTETyWCLDRZpQR4zpU9q6VmBKySA91hsLjofoUjdKdqPCcC54mbpJBmGNsNKM1szecH56p7Vk1byadR'])
+        .should.eventually.throw();
+    });
+
+    it('should retrieve verification info on a key', function() {
+      admin.run(['verification', 'get', 'xpub6AHA9hZDN11k2ijHMeS5QqHx2KP9aMBRhTDqANMnwVtdyw2TDYRmF8PjpvwUFcL1Et8Hj59S3gTSMcUQ5gAqTz3Wd8EsMTmF3DChhqPQBnU'])
+        .should.eventually.not.throw();
+    });
+  });
 });

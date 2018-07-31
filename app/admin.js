@@ -158,8 +158,7 @@ const handleVerificationGet = co(function *(args) {
   const key = yield WalletKey.findOne({ xpub }).lean();
 
   if (key === null) {
-    console.log(`Unable to find wallet key: ${xpub}`);
-    return;
+    throw new Error(`Unable to find wallet key: ${xpub}`);
   }
 
   // if there are multiple lines, this aligns each line under the first line
@@ -200,8 +199,8 @@ const handleVerification = co(function *(args) {
   }
 });
 
-const run = co(function *() {
-  const args = parser.parseArgs();
+const run = co(function *(testArgs) {
+  const args = parser.parseArgs(testArgs);
 
   switch (args.cmd) {
     case 'import':
