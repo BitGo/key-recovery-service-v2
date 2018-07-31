@@ -1,15 +1,15 @@
-var argumentParser = require('argparse').ArgumentParser;
-var fs = require('fs');
-var http = require('http');
-var https = require('https');
-var pjson = require('../package.json');
+const argumentParser = require('argparse').ArgumentParser;
+const fs = require('fs');
+const http = require('http');
+const https = require('https');
+const pjson = require('../package.json');
 
 process.config = require('../config');
-var db = require('../app/db');
+const db = require('../app/db');
 
 // Handle arguments
-var getArgs = function () {
-  var parser = new argumentParser({
+const getArgs = function () {
+  const parser = new argumentParser({
     version: pjson.version,
     addHelp: true,
     description: 'Key Recovery Service'
@@ -49,30 +49,30 @@ var getArgs = function () {
   return parser.parseArgs();
 };
 
-var args = getArgs();
-var app = require('../app/app')(args);
+const args = getArgs();
+const app = require('../app/app')(args);
 
-var baseUri = "http";
+let baseUri = "http";
 if (args.keypath && args.crtpath) {
   // Run in SSL mode
-  var privateKey  = fs.readFileSync(args.keypath, 'utf8');
-  var certificate = fs.readFileSync(args.crtpath, 'utf8');
-  var credentials = {key: privateKey, cert: certificate};
+  const privateKey  = fs.readFileSync(args.keypath, 'utf8');
+  const certificate = fs.readFileSync(args.crtpath, 'utf8');
+  const credentials = {key: privateKey, cert: certificate};
   baseUri += "s";
   server = https.createServer(credentials, app);
 } else {
   server = http.createServer(app);
 }
 
-var host = args.bind || process.config.host || 'localhost';
-var port = args.port || process.env.PORT || process.config.port || 80;
+const host = args.bind || process.config.host || 'localhost';
+const port = args.port || process.env.PORT || process.config.port || 80;
 
 db.connection.on('error', console.error.bind(console, 'database connection error: '));
 db.connection.once('open', function () {
   server.listen(port, host);
 
   baseUri += "://" + host;
-  if (!((port == 80 && !args.keypath) || (port == 443 && args.keypath))) {
+  if (!((port === 80 && !args.keypath) || (port === 443 && args.keypath))) {
     baseUri += ":" + port;
   }
   console.log('Listening on: ' + baseUri);
