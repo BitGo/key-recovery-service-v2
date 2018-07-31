@@ -1,10 +1,8 @@
 const testutils = require('./testutils');
-const request = require('supertest-as-promised');
+const request = require('supertest');
 const should = require('should');
 const server = require('../app/app')();
 const _ = require('lodash');
-
-const RecoveryRequest = require('../app/models/recoveryrequest');
 
 describe('Application Server', function() {
   let agent;
@@ -23,43 +21,70 @@ describe('Application Server', function() {
     });
   });
 
-  // describe('Provision new key', function() {
-  //   it('no useruserEmail specified', function() {
-  //     return agent
-  //     .post('/key')
-  //     .then(function(res) {
-  //       res.status.should.eql(400);
-  //     });
-  //   });
-  //   it('should return a new key', function() {
-  //     return agent
-  //     .post('/key')
-  //     .send({userEmail: 'test@example.com', notificationURL: 'https://test.bitgo.com'})
-  //     .then(function(res) {
-  //       res.status.should.eql(200);
-  //       should.exist(res.body.path);
-  //       res.body.path.substr(0, 2).should.equal('m/');
-  //       should.exist(res.body.xpub);
-  //       res.body.xpub.substr(0, 4).should.equal('xpub');
-  //       res.body.userEmail.should.equal('test@example.com');
-  //     });
-  //   });
-  //
-  //   it('should inform a local instance of BitGo WWW about the new key', function() {
-  //     return agent
-  //     .post('/key')
-  //     .send({userEmail: 'test@example.com', notificationURL: 'http://localhost:3000/api/v1/keychain/webhook'})
-  //     .then(function(res) {
-  //       res.status.should.eql(200);
-  //       should.exist(res.body.path);
-  //       res.body.path.substr(0, 2).should.equal('m/');
-  //       should.exist(res.body.xpub);
-  //       res.body.xpub.substr(0, 4).should.equal('xpub');
-  //       res.body.userEmail.should.equal('test@example.com');
-  //     });
-  //   });
-  // });
-  //
+  describe('Provision new key', function() {
+    it('no userEmail specified', function () {
+      return agent
+        .post('/key')
+        .send({
+          customerId: 'enterprise-id',
+          coin: 'btc',
+        })
+        .then(function (res) {
+          res.status.should.eql(400);
+        });
+    });
+
+    it('no customer ID', function () {
+      return agent
+        .post('/key')
+        .send({
+          coin: 'btc',
+          userEmail: 'test@example.com'
+        })
+        .then(function (res) {
+          res.status.should.eql(400);
+        })
+    });
+
+    it('no coin type', function () {
+      return agent
+        .post('/key')
+        .send({
+          customerId: 'enterprise-id',
+          userEmail: 'test@example.com'
+        })
+        .then(function (res) {
+          res.status.should.eql(400);
+        })
+    });
+
+    it('should return a new key', function () {
+      return agent
+        .post('/key')
+        .send({
+          customerId: 'enterprise-id',
+          coin: 'btc',
+          userEmail: 'test@example.com',
+          custom: {
+            'anyCustomField': 'hello world'
+          }
+        })
+        .then(function (res) {
+          res.status.should.eql(200);
+          should.exist(res.body.path);
+          res.body.path.substr(0, 2).should.equal('m/');
+          should.exist(res.body.masterKey);
+          res.body.masterKey.substr(0, 4).should.equal('xpub');
+          should.exist(res.body.xpub);
+          res.body.xpub.substr(0, 4).should.equal('xpub');
+          res.body.userEmail.should.equal('test@example.com');
+          should.exist(res.body.custom);
+          should.exist(res.body.custom.anyCustomField);
+          res.body.custom.anyCustomField.should.equal('hello world');
+        });
+    });
+  });
+
   // describe('Validate key', function() {
   //   var path;
   //   var xpub;

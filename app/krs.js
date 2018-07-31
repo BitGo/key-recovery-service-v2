@@ -1,22 +1,21 @@
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const moment = require('moment');
+const Promise = require('bluebird');
+const co = Promise.coroutine;
 
 const request = require('superagent');
-require('superagent-as-promised')(request);
 
-const validator = require('validator');
 const Q = require('q');
 const _ = require('lodash');
 
 const utils = require('./utils');
+
+const MasterKey = require('./models/masterkey');
+const WalletKey = require('./models/walletkey');
 const RecoveryRequest = require('./models/recoveryrequest');
 
-if (process.config.masterxpub.substr(0, 4) !== 'xpub') {
-  throw new Error('masterxpub must start with "xpub"');
-}
-
-const notifyEndpoint = function(key, state) {
+const notifyEndpoint = co(function *(key, state) {
   const generateHMAC = function(xpub){
     const hmac = crypto.createHmac('sha256', process.config.provider.secret);
     hmac.update(xpub);
@@ -31,44 +30,52 @@ const notifyEndpoint = function(key, state) {
   const xpub = key.xpub;
   const hmac = generateHMAC(xpub);
 
-  return request.post(notificationURL)
-  .send({
-    userEmail: userEmail,
-    provider: process.config.provider.id,
-    state: state,
-    xpub: xpub,
-    hmac: hmac
-  })
-  .catch(function(err) {
-    // we do not want to throw an error because this has to work even if BitGo is down
-    console.log('error connecting to webhook URL');
-  });
-};
+  try {
+    yield request.post(notificationURL)
+      .send({
+        userEmail: userEmail,
+        provider: process.config.provider.id,
+        state: state,
+        xpub: xpub,
+        hmac: hmac
+      })
+  } catch (e) {
+    console.log('error connecting to webhook');
+  }
+});
 
-exports.provisionKey = function(req) {
-  var userEmail = req.body.userEmail;
+const provisionMasterKey = co(function *(coin, customerId) {
+  const key = yield MasterKey.findOne({ coin: null, customerId: null });
+
+  if (!key) {
+    throw utils.ErrorResponse(500, 'no available keys');
+  }
+
+  key.coin = coin;
+  key.customerId = customerId;
+
+  yield key.save();
+
+  return key;
+});
+
+exports.provisionKey = co(function *(req) {
+  const key = new WalletKey();
+
+  const customerId = req.body.customerId;
+  if (!customerId) {
+    throw utils.ErrorResponse(400, 'user or enterprise ID required');
+  }
+
+  const coin = req.body.coin;
+  if (!coin) {
+    throw utils.ErrorResponse(400, 'coin type required');
+  }
+
+  const userEmail = req.body.userEmail;
   if (!userEmail) {
-    throw utils.ErrorResponse(400, 'userEmail required');
+    throw utils.ErrorResponse(400, 'email required');
   }
-  if (!validator.isEmail(userEmail)) {
-    throw utils.ErrorResponse(400, 'email invalid');
-  }
-
-  var custom = req.body.custom || {};
-  custom.created = new Date();
-
-  var notificationURL = req.body.notificationURL;
-
-  var path = exports.randomPath();
-  var xpub = exports.deriveFromPath(path);
-  var key = new Key({
-    path: path,
-    xpub: xpub,
-    userEmail: userEmail,
-    notificationURL: notificationURL,
-    custom: custom,
-    masterxpub: process.config.masterxpub
-  });
 
   if (process.config.requesterAuth && process.config.requesterAuth.required) {
     if (!req.body.requesterId && !req.body.requesterSecret) {
@@ -78,38 +85,50 @@ exports.provisionKey = function(req) {
         process.config.requesterAuth.clients[req.body.requesterId] !== req.body.requesterSecret) {
       throw utils.ErrorResponse(401, 'invalid requesterSecret');
     }
-    key.requesterId = req.body.requesterId;
   }
 
-  return key.saveQ()
-  .then(function() {
-    if (req.body.disableKRSEmail) {
-      // for API users who don't want their inboxes filling up with unread KRS backup key creation emails
-      return;
+  let masterKey = yield MasterKey.findOne({ customerId, coin });
+
+  if (!masterKey) {
+    masterKey = yield provisionMasterKey(coin, customerId);
+  }
+
+  key.masterKey = masterKey.xpub;
+  key.path = `m/${masterKey.keyCount}`;
+  key.xpub = utils.deriveChildKey(key.masterKey, key.path);
+
+  key.userEmail = req.body.userEmail;
+  key.notificationURL = req.body.notificationURL;
+
+  key.custom = req.body.custom || {};
+  key.custom.created = new Date();
+
+  yield key.save();
+
+  yield masterKey.update({ $inc: { keyCount: 1 } });
+
+  if (!req.body.disableKRSEmail) {
+    try {
+      yield utils.sendMailQ(
+        key.userEmail,
+        'Information about your BitGo backup key',
+        'newkeytemplate',
+        {
+          xpub: key.xpub,
+          servicename: process.config.name,
+          serviceurl: process.config.serviceurl,
+          adminemail: process.config.adminemail,
+          useremail: key.userEmail
+        });
+    } catch (e) {
+      throw utils.ErrorResponse(503, 'Problem sending email');
     }
-    return utils.sendMailQ(
-      userEmail,
-      "Information about your backup key",
-      "newkeytemplate",
-      {
-        xpub: xpub,
-        servicename: process.config.name,
-        serviceurl: process.config.serviceurl,
-        adminemail: process.config.adminemail,
-        useremail: userEmail
-      }
-    )
-    .catch(function(e) {
-      throw utils.ErrorResponse(503, "Problem sending email");
-    });
-  })
-  .then(function() {
-    return notifyEndpoint(key, 'created');
-  })
-  .then(function() {
-    return key;
-  });
-};
+  }
+
+  yield notifyEndpoint(key, 'created');
+
+  return key;
+});
 
 exports.validateKey = function(req) {
   var userEmail = req.query && req.query.userEmail;

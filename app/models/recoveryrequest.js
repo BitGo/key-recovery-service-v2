@@ -1,5 +1,4 @@
 var mongoose = require('mongoose');
-var mongooseQ = require('mongoose-q')(mongoose);
 var _ = require('lodash');
 
 var recoverySchema = new mongoose.Schema({
