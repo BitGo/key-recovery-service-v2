@@ -1,28 +1,28 @@
-var express = require('express');
-var bodyParser = require('body-parser');
-var morgan = require('morgan');
+const express = require('express');
+const bodyParser = require('body-parser');
+const morgan = require('morgan');
 
-var utils = require('./utils');
-var krs = require('./krs');
+const utils = require('./utils');
+const krs = require('./krs');
 
 module.exports = function(args) {
   args = args || {};
-  var app = express();
+  const app = express();
 
   // Set up morgan for logging, with optional logging into a file
   if (args.logfile) {
     // create a write stream (in append mode)
-    var accessLogPath = path.resolve(args.logfile);
-    var accessLogStream = fs.createWriteStream(accessLogPath, {flags: 'a'});
+    const accessLogPath = path.resolve(args.logfile);
+    const accessLogStream = fs.createWriteStream(accessLogPath, { flags: 'a' });
     console.log('Log location: ' + accessLogPath);
     // setup the logger
-    app.use(morgan('combined', {stream: accessLogStream}))
+    app.use(morgan('combined', { stream: accessLogStream }));
   } else {
     app.use(morgan('combined'));
   }
 
-  app.use(bodyParser.urlencoded({extended: false, limit: '1mb'}));
-  app.use(bodyParser.json({limit: '1mb'}));
+  app.use(bodyParser.urlencoded({ extended: false, limit: '1mb' }));
+  app.use(bodyParser.json({ limit: '1mb' }));
 
   app.get('/', function (req, res, next) {
     res.send({ name: process.config.name });
@@ -32,9 +32,6 @@ module.exports = function(args) {
   app.post('/key', utils.promiseWrapper(krs.provisionKey));
   app.get('/key/:xpub', utils.promiseWrapper(krs.validateKey));
   app.post('/recover', utils.promiseWrapper(krs.requestRecovery));
-  app.get('/recover', function(req, res) { res.sendfile('public/recover_bitgo.html'); });
-
-  app.use(express.static('public'));
 
   return app;
 };
