@@ -1,6 +1,7 @@
 const should = require('should');
 
 const admin = require('../app/admin.js');
+const utils = require('../app/utils.js');
 
 describe('Offline Admin Tool', function() {
   describe('Xpub validation', function() {
@@ -63,7 +64,7 @@ describe('Offline Admin Tool', function() {
       it('should find m/0 of test vector 2', function() {
         const M_0 = 'xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH';
 
-        admin.deriveKey(MASTER_XPUB, 'm/0').should.equal(M_0);
+        utils.deriveChildKey(MASTER_XPUB, 'm/0').should.equal(M_0);
       })
     })
   })

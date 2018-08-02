@@ -124,4 +124,4 @@ const run = co(function *() {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateXpub, deriveKey };
+module.exports = { run, validateXpub };
