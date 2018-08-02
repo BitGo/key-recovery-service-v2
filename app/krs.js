@@ -15,7 +15,6 @@ const MasterKey = require('./models/masterkey');
 const WalletKey = require('./models/walletkey');
 const RecoveryRequest = require('./models/recoveryrequest');
 
-
 /**
  * Makes a POST request to an endpoint specified by the customer. This is used by heavy API customers
  * who would prefer to use a webhook than receiving an email for every new wallet.
@@ -65,6 +64,16 @@ const provisionMasterKey = co(function *(coin, customerId) {
   key.customerId = customerId;
 
   yield key.save();
+
+  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null });
+
+  if (_.includes(process.config.lowKeyWarningLevels, availableKeys)) {
+    yield utils.sendMailQ(
+      process.config.adminemail,
+      'URGENT: Please replenish the master key database',
+      'databaselow',
+      { availableKeys });
+  }
 
   return key;
 });
