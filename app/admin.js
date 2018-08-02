@@ -161,12 +161,20 @@ const handleVerificationGet = co(function *(args) {
     throw new Error(`Unable to find wallet key: ${xpub}`);
   }
 
+  if (_.isUndefined(key.verificationInfo)) {
+    key.verificationInfo = '<N/A>'
+  }
+
   // if there are multiple lines, this aligns each line under the first line
   const formattedVerificationInfo = key.verificationInfo.replace(/\n/g, '\n\t\t\t');
 
-  console.log(`==== VERIFICATION INFO FOR KEY ${xpub} ====`);
+  console.log();
+  console.log(`Key:\t\t\t${key.xpub}`);
+  console.log(`Master Key:\t\t${key.masterKey}`);
   console.log(`User Email:\t\t${key.userEmail}`);
   console.log(`Verification Info:\t${formattedVerificationInfo}`);
+  console.log('Custom data:');
+  console.log(JSON.stringify(key.custom, null, 2));
 });
 
 const handleVerificationSet = co(function *(args) {
