@@ -15,6 +15,13 @@ const MasterKey = require('./models/masterkey');
 const WalletKey = require('./models/walletkey');
 const RecoveryRequest = require('./models/recoveryrequest');
 
+
+/**
+ * Makes a POST request to an endpoint specified by the customer. This is used by heavy API customers
+ * who would prefer to use a webhook than receiving an email for every new wallet.
+ * @param key: new wallet key document
+ * @param state: 'created' when the key is first created
+ */
 const notifyEndpoint = co(function *(key, state) {
   const generateHMAC = function(xpub){
     const hmac = crypto.createHmac('sha256', process.config.provider.secret);
@@ -23,9 +30,6 @@ const notifyEndpoint = co(function *(key, state) {
   };
 
   const notificationURL = key.notificationURL;
-  if (!notificationURL) {
-    return;
-  }
   const userEmail = key.userEmail;
   const xpub = key.xpub;
   const hmac = generateHMAC(xpub);
@@ -44,6 +48,12 @@ const notifyEndpoint = co(function *(key, state) {
   }
 });
 
+/**
+ * Selects a random un-assigned master key and sets the coin and customerId fields,
+ * returning the key
+ * @param coin: coin ticker (btc,eth,etc.)
+ * @param customerId: customer ID from the platform
+ */
 const provisionMasterKey = co(function *(coin, customerId) {
   const key = yield MasterKey.findOne({ coin: null, customerId: null });
 
@@ -59,6 +69,12 @@ const provisionMasterKey = co(function *(coin, customerId) {
   return key;
 });
 
+/**
+ * Finds the currently assigned master key for the customer/coin, assigning
+ * a new one if one does not exist. Then, derives a wallet key from the next
+ * chain path, incrementing the keyCount on the master key
+ * @param req: request object
+ */
 exports.provisionKey = co(function *(req) {
   const key = new WalletKey();
 
@@ -125,7 +141,9 @@ exports.provisionKey = co(function *(req) {
     }
   }
 
-  yield notifyEndpoint(key, 'created');
+  if (key.notificationURL) {
+    yield notifyEndpoint(key, 'created');
+  }
 
   return key;
 });
@@ -229,9 +247,3 @@ exports.requestRecovery = function(req) {
     };
   });
 };
-
-// TODO: this needs to be removed to run, but will be implemented in BG-5835
-// exports.deriveFromPath = function(path) {
-//   var masterHDNode = HDNode.fromBase58(process.config.masterxpub);
-//   return masterHDNode.deriveFromPath(path).toBase58();
-// };
