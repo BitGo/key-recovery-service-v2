@@ -2,13 +2,15 @@ const Q = require('q');
 const nodemailer = require('nodemailer');
 const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
+const prova = require('prova-lib');
 
 process.config = require('../config');
 
+let sendMail;
 if (process.config.mail) {
   // create reusable transporter object using SMTP transport
   const mailTransport = nodemailer.createTransport(smtpTransport(process.config.mail));
-  const sendMail = Q.nbind(mailTransport.sendMail, mailTransport);
+  sendMail = Q.nbind(mailTransport.sendMail, mailTransport);
 }
 
 // Error response container for handling by the promise wrapper
@@ -82,4 +84,10 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
 
 exports.formatBTCFromSatoshis = function(satoshis) {
   return (satoshis * 1e-8).toFixed(4);
+};
+
+exports.deriveChildKey = function(masterXpub, derivationPath) {
+  const masterNode = prova.HDNode.fromBase58(masterXpub);
+
+  return masterNode.derivePath(derivationPath).toBase58();
 };
