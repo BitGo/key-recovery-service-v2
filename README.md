@@ -1,6 +1,6 @@
 Key Recovery Service
 ====================
-The key recovery service dispenses BIP32 compliant extended public keys (xpubs) to anyone who requests one for use as a cold key in multisig wallets. These keys are compatible with *most* cryptocurrencies using the Secp256k1 elliptic curve.
+The key recovery service dispenses extended public keys (xpubs) to requesters for use as backup keys in multisig wallets. Dispensed keys are compatible with all coins which implement the [BIP32 key derivation scheme](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki).
 
 This service implements:
 
@@ -26,19 +26,18 @@ Getting Started
 Offline Signing Tool
 ====================
 The offline signing tool can be accessed with:
-``node bin/signoffline.js``
+``node bin/admin.js sign``
 
 ```
-usage: signoffline.js [-h] [-v] [-f FILE] [-k KEY] [--confirm]
+usage: bin/admin.js sign [-h] [FILE] [KEY] [--confirm]
 
 Tool to sign recovery JSON offline (for KRS owners recovery)
 
 Optional arguments:
   -h, --help            Show this help message and exit.
   -v, --version         Show program's version number and exit.
-  -f FILE, --file FILE  Input file of recovery request JSON
-  -k KEY, --key KEY     xprv (private key) for signing
-  --confirm             skip interactive confirm step -- be careful!
+  FILE                  Input file of recovery request JSON
+  KEY                   xprv (private key) for signing
 ```
 
 Legal
