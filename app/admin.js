@@ -11,6 +11,7 @@ const prova = require('prova-lib');
 
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
+const signingTool = require('./sign.js');
 
 const parser = new ArgumentParser({
   version: pjson.version,
@@ -45,6 +46,23 @@ deriveKeyCommand.addArgument(
   {
     action: 'store',
     help: 'derivation path of the wallet key (starts with "m/")'
+  }
+);
+
+const signCommand = subparsers.addParser('sign', { addHelp: true });
+signCommand.addArgument(
+  ['file'],
+  {
+    action: 'store',
+    help: 'path to the recovery request JSON file'
+  }
+);
+signCommand.addArgument(
+  ['key'],
+  {
+    action: 'store',
+    required: false, // can be typed during the signing process to avoid leaving the xprv in the shell history
+    help: 'private key to sign the transaction with'
   }
 );
 
@@ -125,6 +143,10 @@ const run = co(function *() {
   switch (args.cmd) {
     case 'import':
       yield handleImportKeys(args);
+      break;
+    case 'sign':
+      signingTool.handleSign(args);
+      break;
   }
 });
 
