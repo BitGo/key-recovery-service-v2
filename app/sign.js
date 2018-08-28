@@ -1,6 +1,9 @@
 const utxoLib = require('bitgo-utxo-lib');
+const prova = require('prova-lib');
+const EthTx = require('ethereumjs-tx');
 const fs = require('fs');
 const _ = require('lodash');
+const BN = require('bignumber.js');
 const prompt = require('prompt-sync')();
 
 const utxoNetworks = {
@@ -21,6 +24,8 @@ const coinDecimals = {
   tltc: 8,
   eth: 18
 };
+
+const WEI_PER_ETH = new BN(10).pow(18);
 
 const handleSignUtxo = function(recoveryRequest, key) {
   const network = utxoNetworks[recoveryRequest.coin];
@@ -99,11 +104,60 @@ const handleSignUtxo = function(recoveryRequest, key) {
     }
   });
 
-  const signedTx = txBuilder.build();
-  console.log(`Signed transaction hex: ${signedTx.toHex()}`);
-  console.log('==================');
+  return txBuilder.build();
+};
 
-  return signedTx.toHex();
+const handleSignEthereum = function(recoveryRequest, key) {
+  const transaction = new EthTx(recoveryRequest.tx);
+
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
+  const txData = transaction.data;
+  const outputAddress = '0x' + txData.slice(16, 36).toString('hex');
+  const outputAmountWei = new BN(txData.slice(36, 68).toString('hex'), 16);
+  const outputAmount = outputAmountWei.div(WEI_PER_ETH).toString();
+
+  console.log('Sign Recovery Transaction');
+  console.log('=========================');
+  console.log(`Backup Key: ${ recoveryRequest.backupKey }`);
+  console.log(`Output Address: ${ outputAddress }`);
+  console.log(`Output Amount: ${ outputAmount }`);
+  console.log(`Custom Message: ${ customMessage }`);
+  console.log('=========================');
+
+  if (!key) {
+    console.log('Please enter the xprv of the wallet for signing: ');
+    key = prompt();
+  }
+
+  let backupKeyNode;
+
+  try {
+    backupKeyNode = utxoLib.HDNode.fromBase58(key);
+  } catch (e) {
+    throw new Error('invalid private key');
+  }
+
+  if (backupKeyNode.toBase58() === backupKeyNode.neutered().toBase58()) {
+    throw new Error('please provide the private (not public) wallet key');
+  }
+
+  if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
+    throw new Error('provided private key does not match public key specified with recovery request');
+  }
+
+  console.log('Please type "go" to confirm: ');
+  const confirm = prompt();
+
+  if (confirm !== 'go') {
+    throw new Error('recovery aborted');
+  }
+
+  const backupHDNode = prova.HDNode.fromBase58(key);
+  const backupSigningKey = backupHDNode.getKey().getPrivateKeyBuffer();
+
+  transaction.sign(backupSigningKey);
+
+  return transaction.serialize().toString('hex');
 };
 
 const handleSign = function(args) {
@@ -116,13 +170,16 @@ const handleSign = function(args) {
   let txHex;
 
   switch (coin) {
-    case 'eth':
+    case 'eth': case 'teth':
       txHex = handleSignEthereum(recoveryRequest, key);
       break;
     default:
       txHex = handleSignUtxo(recoveryRequest, key);
       break;
   }
+
+  console.log(`Signed transaction hex: ${txHex}`);
+  console.log('==================');
 
   const filename = file.replace(/\.[^/.]+$/, '') + '.signed.json';
   console.log(`Writing signed transaction to file: ${filename}`);
