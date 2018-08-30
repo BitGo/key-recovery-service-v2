@@ -12,16 +12,54 @@ This service implements:
 
 Tests for the service can be run with ``npm test``. 
 
-Getting Started
+Key Server Setup and Deployment
 ====================
-1. Git clone this repository.
-2. Do an ``npm install`` in the root folder.
-3. Run ``node bin/server.js`` to start the service.
-4. Import public keys with ``node bin/admin.js import <path to CSV file containing xpubs>``
-5. The service should be accessible in the browser via ``http://localhost:6833/key`` 
-6. Start obtaining a key by issuing a curl command like:
+The key server is BitGo's interface to the KRS service. It is responsible for storing, maintaining, and distributing public keys.
 
-``curl -H "Content-Type: application/json" -d '{ "customerId": "acme-inc-123", "coin": "btc", "userEmail": "user@example.com", "custom": { "phone": "1-800-123-4567" } }' http://localhost:6833/key``
+**Under no circumstance should private keys be stored on the key server.**
+
+1. The KRS server is developed in NodeJS. Install NodeJS and NPM
+
+    [NodeJS Installation Guide](http://howtonode.org/how-to-install-nodejs)
+2. The KRS server stores public keys in a MongoDB database. Install MongoDB on the same server as the KRS server, or on a separate server on the local network.
+
+    [MongoDB Installation Guide](https://docs.mongodb.com/manual/installation/) 
+3. Clone this repository
+4. Run `npm install` in the KRS repository folder to install required libraries for the KRS server.
+5. Configure the KRS service (see Configuration below)
+6. Start the server with `npm start`
+7. The service will be available via `http://localhost:6833/key`
+8. Obtain a key by issuing a curl command like:
+
+`curl -h "Content-Type: application/json" -d "{ "customerId": "123abc", "coin: "btc", "userEmail": "user@example.com", "custom": { } }" http://localhost:6833/key`
+
+Replace `user@example.com` with your email in the above example to receive an email with your backup key.
+
+Offline Environment Setup
+====================
+An offline environment is required for generating a master key, deriving hardened customer keys, and signing recovery transactions.
+
+1. Install [BitGo CLI](https://github.com/BitGo/bitgo-cli) and the KRSv2 admin tool (``bin/admin.js``) on the offline environment
+2. Generate a random key pair with ``bitgo newkey``.
+3. Shard the key with [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing) with the ``bitgo splitkeys`` command.
+4. The key shards of the master private key **must** be stored securely. At a minimum, BitGo requires KRS operators to store keys with an industry-approved encryption standard such as AES-256. The encryption password **must** contain at least 16 characters, including uppercase and lowercase letters, numbers, and symbols.
+5. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to the ``keys.csv`` file. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
+
+    ``bin/admin.js generateKeys [xprv] --start 0 -n 1000000``
+    
+6. Transfer the keys.csv file to the online key server via flash drive, SD card, or other physical medium.
+7. Import the public keys to the key server's database with
+
+    ``bin/admin.js import keys.csv``
+
+Configuration
+====================
+The KRS server must be configured with your service's branding, administrator email address, and Mailgun credentials before use.
+
+1. [Sign up for a Mailgun account](https://www.mailgun.com/) and retrieve your username and password.
+2. Store these credentials in the ``MAILGUN_USER`` and ``MAILGUN_PASS`` environment variables.
+3. In ``config.js``, provide your service's name, URL, public-facing email address, and administrator email address.
+4. In ``config.js``, specify the address and port of your MongoDB database.
 
 Offline Signing Tool
 ====================
@@ -39,6 +77,13 @@ Optional arguments:
   FILE                  Input file of recovery request JSON
   KEY                   xprv (private key) for signing
 ```
+
+In a recovery scenario, the user or BitGo will provide you with a recovery file containing:
+ - The coin to be recovered
+ - The backup key associated with the wallet
+ - A raw transaction hex with one signature applied
+ 
+It is your responsibility to verify the identity of the user (verification information can be stored and retrieved with ``bin/admin.js verification``), then co-sign the recovery in an offline environment. After cosigning a recovery, you can transfer the signed transaction hex to an online machine, and broadcast the transaction from any node or public block explorer.
 
 Legal
 ====================
