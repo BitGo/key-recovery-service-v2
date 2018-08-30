@@ -47,7 +47,7 @@ An offline environment is required for generating a master key, deriving hardene
 
     ``bin/admin.js generateKeys [xprv] --start 0 -n 1000000``
     
-6. Transfer the keys.csv file to the online key server via flash drive, SD card, or other physical medium.
+6. Transfer the keys.json file to the online key server via flash drive, SD card, or other physical medium.
 7. Import the public keys to the key server's database with
 
     ``bin/admin.js import keys.json``
