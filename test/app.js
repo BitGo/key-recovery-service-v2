@@ -10,6 +10,10 @@ describe('Application Server', function() {
     agent = request.agent(server);
   });
 
+  after(function() {
+    testutils.mongoose.connection.close();
+  });
+
   describe('GET /', function() {
     it('should return the name', function() {
       return agent
@@ -56,6 +60,19 @@ describe('Application Server', function() {
         .then(function (res) {
           res.status.should.eql(400);
         })
+    });
+
+    it('unsupported coin', function () {
+      return agent
+        .post('/key')
+        .send({
+          customerId: 'enterprise-id',
+          coin: 'bitconnect',
+          userEmail: 'test@example.com'
+        })
+        .then(function (res) {
+          res.status.should.eql(400);
+        });
     });
 
     it('should return a new key', function () {
