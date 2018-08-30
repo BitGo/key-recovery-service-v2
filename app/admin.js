@@ -12,6 +12,7 @@ const prova = require('prova-lib');
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
 const signingTool = require('./sign.js');
+const utils = require('./utils');
 
 const parser = new ArgumentParser({
   version: pjson.version,
@@ -122,15 +123,9 @@ const handleImportKeys = co(function *(args) {
     }));
 });
 
-const deriveKey = function(masterKey, derivationPath) {
-  const masterNode = prova.HDNode.fromBase58(masterKey);
-
-  return masterNode.derivePath(derivationPath).toBase58();
-};
-
 const handleDeriveKey = function(args) {
   try {
-    const childKey = deriveKey(args.master, args.path);
+    const childKey = utils.deriveChildKey(args.master, args.path);
     console.log(` = ${childKey}`);
   } catch (e) {
     console.log(e.message);
@@ -151,4 +146,4 @@ const run = co(function *() {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateXpub, deriveKey };
+module.exports = { run, validateXpub };
