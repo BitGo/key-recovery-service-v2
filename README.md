@@ -43,14 +43,14 @@ An offline environment is required for generating a master key, deriving hardene
 2. Generate a random key pair with ``bitgo newkey``.
 3. Shard the key with [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing) with the ``bitgo splitkeys`` command.
 4. The key shards of the master private key **must** be stored securely. At a minimum, BitGo requires KRS operators to store keys with an industry-approved encryption standard such as AES-256. The encryption password **must** contain at least 16 characters, including uppercase and lowercase letters, numbers, and symbols.
-5. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to the ``keys.csv`` file. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
+5. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to the ``keys.json`` file. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
 
     ``bin/admin.js generateKeys [xprv] --start 0 -n 1000000``
     
 6. Transfer the keys.csv file to the online key server via flash drive, SD card, or other physical medium.
 7. Import the public keys to the key server's database with
 
-    ``bin/admin.js import keys.csv``
+    ``bin/admin.js import keys.json``
 
 Configuration
 ====================
