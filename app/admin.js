@@ -120,7 +120,13 @@ const run = co(function *() {
   switch (args.cmd) {
     case 'import':
       yield handleImportKeys(args);
+      break;
+    case 'derive':
+      handleDeriveKey(args);
+      break;
   }
+
+  db.connection.close();
 });
 
 // For admin script and unit testing of functions
