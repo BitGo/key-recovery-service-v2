@@ -212,12 +212,14 @@ const run = co(function *(testArgs) {
       yield handleImportKeys(args);
       break;
     case 'derive':
-      yield handleDeriveKey(args);
+      handleDeriveKey(args);
       break;
     case 'verification':
       yield handleVerification(args);
       break;
   }
+
+  db.connection.close();
 });
 
 // For admin script and unit testing of functions
