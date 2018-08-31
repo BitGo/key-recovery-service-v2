@@ -168,8 +168,10 @@ const handleVerificationGet = co(function *(args) {
   console.log(`Master Key:\t\t${key.masterKey}`);
   console.log(`User Email:\t\t${key.userEmail}`);
   console.log(`Verification Info:\t${formattedVerificationInfo}`);
-  console.log('Custom data:');
-  console.log(JSON.stringify(key.custom, null, 2));
+  if (key.custom) {
+    console.log('Custom data:');
+    console.log(JSON.stringify(key.custom, null, 2));
+  }
 });
 
 const handleVerificationSet = co(function *(args) {
