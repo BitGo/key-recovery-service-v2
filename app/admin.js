@@ -141,8 +141,12 @@ const run = co(function *() {
       break;
     case 'sign':
       signingTool.handleSign(args);
+    case 'derive':
+      handleDeriveKey(args);
       break;
   }
+
+  db.connection.close();
 });
 
 // For admin script and unit testing of functions
