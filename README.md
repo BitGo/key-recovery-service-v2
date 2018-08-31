@@ -18,10 +18,10 @@ The key server is BitGo's interface to the KRS service. It is responsible for st
 
 **Under no circumstance should private keys be stored on the key server.**
 
-1. The KRS server is developed in NodeJS. Install NodeJS and NPM
+1. The KRS server is developed in NodeJS 6. Install NodeJS and NPM
 
     [NodeJS Installation Guide](http://howtonode.org/how-to-install-nodejs)
-2. The KRS server stores public keys in a MongoDB database. Install MongoDB on the same server as the KRS server, or on a separate server on the local network.
+2. The KRS server stores public keys in a MongoDB 3 database. Install MongoDB on the same server as the KRS server, or on a separate server on the local network.
 
     [MongoDB Installation Guide](https://docs.mongodb.com/manual/installation/) 
 3. Clone this repository
