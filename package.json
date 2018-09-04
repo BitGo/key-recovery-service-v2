@@ -34,6 +34,10 @@
     "prompt-sync": "^4.1.6",
     "prova-lib": "^0.2.9",
     "q": "^1.5.1",
+    "ripple-binary-codec": "^0.1.13",
+    "ripple-hashes": "^0.3.1",
+    "ripple-keypairs": "^0.10.1",
+    "ripple-lib": "^1.0.0-beta.5",
     "superagent": "^3.8.3",
     "validator": "^10.4.0"
   }

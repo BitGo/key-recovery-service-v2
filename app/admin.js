@@ -141,6 +141,7 @@ const run = co(function *() {
       break;
     case 'sign':
       signingTool.handleSign(args);
+      break;
     case 'derive':
       handleDeriveKey(args);
       break;

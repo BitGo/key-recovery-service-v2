@@ -1,6 +1,9 @@
 const utxoLib = require('bitgo-utxo-lib');
 const prova = require('prova-lib');
 const EthTx = require('ethereumjs-tx');
+const rippleLib = require('ripple-lib');
+const rippleKeypairs = require('ripple-keypairs');
+const rippleParse = require('ripple-binary-codec');
 const fs = require('fs');
 const _ = require('lodash');
 const BN = require('bignumber.js');
@@ -23,6 +26,58 @@ const coinDecimals = {
   tbtc: 8,
   tltc: 8,
   eth: 18
+};
+
+// Utility functions from BitGoJS
+function computeSignature(tx, privateKey, signAs) {
+  const signingData = signAs ?
+    rippleParse.encodeForMultisigning(tx, signAs) : binary.encodeForSigning(tx);
+  return rippleKeypairs.sign(signingData, privateKey);
+}
+
+const { computeBinaryTransactionHash } = require('ripple-hashes');
+
+rippleLib.signWithPrivateKey = function(txHex, privateKey, options) {
+  let privateKeyBuffer = new Buffer(privateKey, 'hex');
+  if (privateKeyBuffer.length === 33 && privateKeyBuffer[0] === 0) {
+    privateKeyBuffer = privateKeyBuffer.slice(1, 33);
+  }
+  const privateKeyObject = prova.ECPair.fromPrivateKeyBuffer(privateKeyBuffer);
+  const publicKey = privateKeyObject.getPublicKeyBuffer().toString('hex').toUpperCase();
+
+  let tx;
+  try {
+    tx = rippleParse.decode(txHex);
+  } catch (e) {
+    try {
+      tx = JSON.parse(txHex);
+    } catch (e) {
+      throw new Error('txHex needs to be either hex or JSON string for XRP');
+    }
+  }
+
+  tx.SigningPubKey = (options && options.signAs) ? '' : publicKey;
+
+  if (options && options.signAs) {
+    const expectedSigner = rippleKeypairs.deriveAddress(publicKey);
+    if (options.signAs !== expectedSigner) {
+      throw new Error('signAs does not match private key');
+    }
+    const signer = {
+      Account: options.signAs,
+      SigningPubKey: publicKey,
+      TxnSignature: computeSignature(tx, privateKey, options.signAs)
+    };
+    tx.Signers = [{ Signer: signer }];
+  } else {
+    tx.TxnSignature = computeSignature(tx, privateKey);
+  }
+
+  const serialized = rippleParse.encode(tx);
+  return {
+    signedTransaction: serialized,
+    id: computeBinaryTransactionHash(serialized)
+  };
 };
 
 const WEI_PER_ETH = new BN(10).pow(18);
@@ -160,6 +215,56 @@ const handleSignEthereum = function(recoveryRequest, key) {
   return transaction.serialize().toString('hex');
 };
 
+const handleSignXrp = function(recoveryRequest, key) {
+  const transaction = rippleParse.decode(recoveryRequest.txHex);
+  const rippleApi = new rippleLib.RippleAPI();
+  const outputAddress = transaction.Destination;
+  const outputAmount = transaction.Amount;
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : "None";
+
+  console.log('Sign Recovery Transaction');
+  console.log('=========================');
+  console.log(`Backup Key: ${ recoveryRequest.backupKey }`);
+  console.log(`Output Address: ${ outputAddress }`);
+  console.log(`Output Amount: ${ outputAmount }`);
+  console.log(`Custom Message: ${ customMessage }`);
+  console.log('=========================');
+
+  if (!key) {
+    console.log('Please enter the xprv of the wallet for signing: ');
+    key = prompt();
+  }
+
+  let backupKeyNode;
+
+  try {
+    backupKeyNode = utxoLib.HDNode.fromBase58(key);
+  } catch (e) {
+    throw new Error('invalid private key');
+  }
+
+  if (backupKeyNode.toBase58() === backupKeyNode.neutered().toBase58()) {
+    throw new Error('please provide the private (not public) wallet key');
+  }
+
+  if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
+    throw new Error('provided private key does not match public key specified with recovery request');
+  }
+
+  console.log('Please type "go" to confirm: ');
+  const confirm = prompt();
+
+  if (confirm !== 'go') {
+    throw new Error('recovery aborted');
+  }
+
+  const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.getPublicKeyBuffer().toString('hex'));
+  const privateKeyHex = backupKeyNode.keyPair.d.toString(16);
+  const cosignedTx = rippleLib.signWithPrivateKey(recoveryRequest.txHex, privateKeyHex, { signAs: backupAddress });
+
+  return rippleApi.combine([ recoveryRequest.txHex, cosignedTx.signedTransaction ]).signedTransaction;
+};
+
 const handleSign = function(args) {
   const file = args.file;
   const key = args.key;
@@ -173,13 +278,15 @@ const handleSign = function(args) {
     case 'eth': case 'teth':
       txHex = handleSignEthereum(recoveryRequest, key);
       break;
+    case 'xrp': case 'txrp':
+      txHex = handleSignXrp(recoveryRequest, key);
+      break;
     default:
       txHex = handleSignUtxo(recoveryRequest, key);
       break;
   }
 
   console.log(`Signed transaction hex: ${txHex}`);
-  console.log('==================');
 
   const filename = file.replace(/\.[^/.]+$/, '') + '.signed.json';
   console.log(`Writing signed transaction to file: ${filename}`);
