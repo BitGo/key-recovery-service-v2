@@ -97,6 +97,10 @@ exports.provisionKey = co(function *(req) {
     throw utils.ErrorResponse(400, 'coin type required');
   }
 
+  if (!process.config.supportedcoins.includes(req.body.coin)) {
+    throw utils.ErrorResponse(400, 'unsupported coin');
+  }
+
   const userEmail = req.body.userEmail;
   if (!userEmail) {
     throw utils.ErrorResponse(400, 'email required');
