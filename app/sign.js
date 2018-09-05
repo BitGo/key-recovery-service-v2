@@ -139,6 +139,7 @@ const handleSignUtxo = function(recoveryRequest, key) {
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
 
   _.forEach(recoveryRequest.inputs, function(input, i) {
+    const isBech32 = !input.redeemScript;
     const isSegwit = !!input.witnessScript;
 
     // chain paths come from the SDK with a leading /, which is technically not allowed by BIP32
@@ -148,14 +149,22 @@ const handleSignUtxo = function(recoveryRequest, key) {
 
     const derivedHDNode = backupKeyNode.derivePath(input.chainPath);
 
-    const redeemScript = new Buffer(input.redeemScript, 'hex');
     console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
 
-    if (isSegwit) {
-      const witnessScript = new Buffer(input.witnessScript, 'hex');
-      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript)
+    if (isBech32) {
+      const witnessScript = Buffer.from(input.witnessScript, 'hex');
+      const witnessScriptHash = utxoLib.crypto.sha256(witnessScript);
+      const prevOutScript = utxoLib.script.witnessScriptHash.output.encode(witnessScriptHash);
+      txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
     } else {
-      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL);
+      const redeemScript = new Buffer(input.redeemScript, 'hex');
+
+      if (isSegwit) {
+        const witnessScript = new Buffer(input.witnessScript, 'hex');
+        txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript)
+      } else {
+        txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL);
+      }
     }
   });
 
