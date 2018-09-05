@@ -226,7 +226,7 @@ const handleSign = function(args) {
   const file = args.file;
   const key = args.key;
 
-  const recoveryRequest = JSON.parse(fs.readFileSync(file));
+  const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
   const coin = recoveryRequest.coin;
 
   let txHex;
