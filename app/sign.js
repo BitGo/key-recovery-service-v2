@@ -26,6 +26,7 @@ const coinDecimals = {
   zec: 8,
   tbtc: 8,
   tltc: 8,
+  xrp: 6
 };
 
 const WEI_PER_ETH = new BN(10).pow(18);
@@ -180,7 +181,7 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
   const transaction = rippleParse.decode(recoveryRequest.txHex);
   const rippleApi = new rippleLib.RippleAPI();
   const outputAddress = transaction.Destination;
-  const outputAmount = transaction.Amount;
+  const outputAmount = transaction.Amount / Math.pow(10, coinDecimals.xrp);
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : "None";
 
   console.log('Sign Recovery Transaction');
