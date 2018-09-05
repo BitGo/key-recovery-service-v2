@@ -91,3 +91,55 @@ exports.deriveChildKey = function(masterXpub, derivationPath) {
 
   return masterNode.derivePath(derivationPath).toBase58();
 };
+
+// Ripple signing functions from BitGoJS
+exports.computeSignature = function(tx, privateKey, signAs) {
+  const signingData = signAs ?
+    rippleParse.encodeForMultisigning(tx, signAs) : binary.encodeForSigning(tx);
+  return rippleKeypairs.sign(signingData, privateKey);
+};
+
+exports.computeBinaryTransactionHash = require('ripple-hashes').computeBinaryTransactionHash;
+
+exports.signXrpWithPrivateKey = function(txHex, privateKey, options) {
+  let privateKeyBuffer = new Buffer(privateKey, 'hex');
+  if (privateKeyBuffer.length === 33 && privateKeyBuffer[0] === 0) {
+    privateKeyBuffer = privateKeyBuffer.slice(1, 33);
+  }
+  const privateKeyObject = prova.ECPair.fromPrivateKeyBuffer(privateKeyBuffer);
+  const publicKey = privateKeyObject.getPublicKeyBuffer().toString('hex').toUpperCase();
+
+  let tx;
+  try {
+    tx = rippleParse.decode(txHex);
+  } catch (e) {
+    try {
+      tx = JSON.parse(txHex);
+    } catch (e) {
+      throw new Error('txHex needs to be either hex or JSON string for XRP');
+    }
+  }
+
+  tx.SigningPubKey = (options && options.signAs) ? '' : publicKey;
+
+  if (options && options.signAs) {
+    const expectedSigner = rippleKeypairs.deriveAddress(publicKey);
+    if (options.signAs !== expectedSigner) {
+      throw new Error('signAs does not match private key');
+    }
+    const signer = {
+      Account: options.signAs,
+      SigningPubKey: publicKey,
+      TxnSignature: computeSignature(tx, privateKey, options.signAs)
+    };
+    tx.Signers = [{ Signer: signer }];
+  } else {
+    tx.TxnSignature = computeSignature(tx, privateKey);
+  }
+
+  const serialized = rippleParse.encode(tx);
+  return {
+    signedTransaction: serialized,
+    id: computeBinaryTransactionHash(serialized)
+  };
+};

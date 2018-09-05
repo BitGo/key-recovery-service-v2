@@ -1,5 +1,4 @@
 const utxoLib = require('bitgo-utxo-lib');
-const prova = require('prova-lib');
 const EthTx = require('ethereumjs-tx');
 const rippleLib = require('ripple-lib');
 const rippleKeypairs = require('ripple-keypairs');
@@ -8,6 +7,7 @@ const fs = require('fs');
 const _ = require('lodash');
 const BN = require('bignumber.js');
 const prompt = require('prompt-sync')();
+const utils = require('./utils');
 
 const utxoNetworks = {
   btc: utxoLib.networks.bitcoin,
@@ -26,58 +26,6 @@ const coinDecimals = {
   tbtc: 8,
   tltc: 8,
   eth: 18
-};
-
-// Utility functions from BitGoJS
-function computeSignature(tx, privateKey, signAs) {
-  const signingData = signAs ?
-    rippleParse.encodeForMultisigning(tx, signAs) : binary.encodeForSigning(tx);
-  return rippleKeypairs.sign(signingData, privateKey);
-}
-
-const { computeBinaryTransactionHash } = require('ripple-hashes');
-
-rippleLib.signWithPrivateKey = function(txHex, privateKey, options) {
-  let privateKeyBuffer = new Buffer(privateKey, 'hex');
-  if (privateKeyBuffer.length === 33 && privateKeyBuffer[0] === 0) {
-    privateKeyBuffer = privateKeyBuffer.slice(1, 33);
-  }
-  const privateKeyObject = prova.ECPair.fromPrivateKeyBuffer(privateKeyBuffer);
-  const publicKey = privateKeyObject.getPublicKeyBuffer().toString('hex').toUpperCase();
-
-  let tx;
-  try {
-    tx = rippleParse.decode(txHex);
-  } catch (e) {
-    try {
-      tx = JSON.parse(txHex);
-    } catch (e) {
-      throw new Error('txHex needs to be either hex or JSON string for XRP');
-    }
-  }
-
-  tx.SigningPubKey = (options && options.signAs) ? '' : publicKey;
-
-  if (options && options.signAs) {
-    const expectedSigner = rippleKeypairs.deriveAddress(publicKey);
-    if (options.signAs !== expectedSigner) {
-      throw new Error('signAs does not match private key');
-    }
-    const signer = {
-      Account: options.signAs,
-      SigningPubKey: publicKey,
-      TxnSignature: computeSignature(tx, privateKey, options.signAs)
-    };
-    tx.Signers = [{ Signer: signer }];
-  } else {
-    tx.TxnSignature = computeSignature(tx, privateKey);
-  }
-
-  const serialized = rippleParse.encode(tx);
-  return {
-    signedTransaction: serialized,
-    id: computeBinaryTransactionHash(serialized)
-  };
 };
 
 const WEI_PER_ETH = new BN(10).pow(18);
@@ -216,7 +164,7 @@ const handleSignEthereum = function(recoveryRequest, key) {
     throw new Error('recovery aborted');
   }
 
-  const backupHDNode = prova.HDNode.fromBase58(key);
+  const backupHDNode = utxoLib.HDNode.fromBase58(key);
   const backupSigningKey = backupHDNode.getKey().getPrivateKeyBuffer();
 
   transaction.sign(backupSigningKey);
@@ -269,7 +217,7 @@ const handleSignXrp = function(recoveryRequest, key) {
 
   const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.getPublicKeyBuffer().toString('hex'));
   const privateKeyHex = backupKeyNode.keyPair.d.toString(16);
-  const cosignedTx = rippleLib.signWithPrivateKey(recoveryRequest.txHex, privateKeyHex, { signAs: backupAddress });
+  const cosignedTx = utils.signXrpWithPrivateKey(recoveryRequest.txHex, privateKeyHex, { signAs: backupAddress });
 
   return rippleApi.combine([ recoveryRequest.txHex, cosignedTx.signedTransaction ]).signedTransaction;
 };
