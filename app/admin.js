@@ -7,7 +7,6 @@ const ArgumentParser = require('argparse').ArgumentParser;
 const pjson = require('../package.json');
 const fs = require('fs');
 const csvParser = require('csv-parse');
-const prova = require('prova-lib');
 
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
@@ -65,6 +64,13 @@ signCommand.addArgument(
     action: 'store',
     required: false, // can be typed during the signing process to avoid leaving the xprv in the shell history
     help: 'private key to sign the transaction with'
+  }
+);
+signCommand.addArgument(
+  ['--confirm'],
+  {
+    action: 'storeTrue',
+    help: 'will not ask for confirmation before signing (be careful!)'
   }
 );
 

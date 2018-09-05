@@ -1,4 +1,5 @@
 const utxoLib = require('bitgo-utxo-lib');
+const prova = require('prova-lib');
 const EthTx = require('ethereumjs-tx');
 const rippleLib = require('ripple-lib');
 const rippleKeypairs = require('ripple-keypairs');
@@ -25,12 +26,11 @@ const coinDecimals = {
   zec: 8,
   tbtc: 8,
   tltc: 8,
-  eth: 18
 };
 
 const WEI_PER_ETH = new BN(10).pow(18);
 
-const handleSignUtxo = function(recoveryRequest, key) {
+const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   const network = utxoNetworks[recoveryRequest.coin];
   const decimals = coinDecimals[recoveryRequest.coin];
 
@@ -77,11 +77,13 @@ const handleSignUtxo = function(recoveryRequest, key) {
   // force override network as we use btc mainnet xpubs for all utxo coins
   backupKeyNode.keyPair.network = network;
 
-  console.log('Please type "go" to confirm: ');
-  const confirm = prompt();
+  if (!skipConfirm) {
+    console.log('Please type "go" to confirm: ');
+    const confirm = prompt();
 
-  if (confirm !== 'go') {
-    throw new Error('recovery aborted');
+    if (confirm !== 'go') {
+      throw new Error('recovery aborted');
+    }
   }
 
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
@@ -116,10 +118,10 @@ const handleSignUtxo = function(recoveryRequest, key) {
     }
   });
 
-  return txBuilder.build();
+  return txBuilder.build().toHex();
 };
 
-const handleSignEthereum = function(recoveryRequest, key) {
+const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   const transaction = new EthTx(recoveryRequest.tx);
 
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
@@ -157,14 +159,16 @@ const handleSignEthereum = function(recoveryRequest, key) {
     throw new Error('provided private key does not match public key specified with recovery request');
   }
 
-  console.log('Please type "go" to confirm: ');
-  const confirm = prompt();
+  if (!skipConfirm) {
+    console.log('Please type "go" to confirm: ');
+    const confirm = prompt();
 
-  if (confirm !== 'go') {
-    throw new Error('recovery aborted');
+    if (confirm !== 'go') {
+      throw new Error('recovery aborted');
+    }
   }
 
-  const backupHDNode = utxoLib.HDNode.fromBase58(key);
+  const backupHDNode = prova.HDNode.fromBase58(key);
   const backupSigningKey = backupHDNode.getKey().getPrivateKeyBuffer();
 
   transaction.sign(backupSigningKey);
@@ -172,7 +176,7 @@ const handleSignEthereum = function(recoveryRequest, key) {
   return transaction.serialize().toString('hex');
 };
 
-const handleSignXrp = function(recoveryRequest, key) {
+const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
   const transaction = rippleParse.decode(recoveryRequest.txHex);
   const rippleApi = new rippleLib.RippleAPI();
   const outputAddress = transaction.Destination;
@@ -208,11 +212,13 @@ const handleSignXrp = function(recoveryRequest, key) {
     throw new Error('provided private key does not match public key specified with recovery request');
   }
 
-  console.log('Please type "go" to confirm: ');
-  const confirm = prompt();
+  if (!skipConfirm) {
+    console.log('Please type "go" to confirm: ');
+    const confirm = prompt();
 
-  if (confirm !== 'go') {
-    throw new Error('recovery aborted');
+    if (confirm !== 'go') {
+      throw new Error('recovery aborted');
+    }
   }
 
   const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.getPublicKeyBuffer().toString('hex'));
@@ -233,13 +239,13 @@ const handleSign = function(args) {
 
   switch (coin) {
     case 'eth': case 'teth':
-      txHex = handleSignEthereum(recoveryRequest, key);
+      txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
       break;
     case 'xrp': case 'txrp':
-      txHex = handleSignXrp(recoveryRequest, key);
+      txHex = handleSignXrp(recoveryRequest, key, args.confirm);
       break;
     default:
-      txHex = handleSignUtxo(recoveryRequest, key);
+      txHex = handleSignUtxo(recoveryRequest, key, args.confirm);
       break;
   }
 
@@ -255,4 +261,4 @@ const handleSign = function(args) {
   console.log('Done');
 };
 
-module.exports = { handleSign };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp };

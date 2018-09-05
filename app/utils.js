@@ -4,6 +4,9 @@ const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
 const prova = require('prova-lib');
 
+const rippleParse = require('ripple-binary-codec');
+const rippleKeypairs = require('ripple-keypairs');
+
 process.config = require('../config');
 
 let sendMail;
@@ -130,16 +133,16 @@ exports.signXrpWithPrivateKey = function(txHex, privateKey, options) {
     const signer = {
       Account: options.signAs,
       SigningPubKey: publicKey,
-      TxnSignature: computeSignature(tx, privateKey, options.signAs)
+      TxnSignature: exports.computeSignature(tx, privateKey, options.signAs)
     };
     tx.Signers = [{ Signer: signer }];
   } else {
-    tx.TxnSignature = computeSignature(tx, privateKey);
+    tx.TxnSignature = exports.computeSignature(tx, privateKey);
   }
 
   const serialized = rippleParse.encode(tx);
   return {
     signedTransaction: serialized,
-    id: computeBinaryTransactionHash(serialized)
+    id: exports.computeBinaryTransactionHash(serialized)
   };
 };
