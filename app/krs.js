@@ -123,7 +123,7 @@ exports.provisionKey = co(function *(req) {
   }
 
   key.masterKey = masterKey.xpub;
-  key.path = `m/${masterKey.keyCount}`;
+  key.path = masterKey.keyCount;
   key.xpub = utils.deriveChildKey(key.masterKey, key.path);
 
   key.userEmail = req.body.userEmail;
