@@ -44,7 +44,7 @@ signCommand.addArgument(
   }
 );
 signCommand.addArgument(
-  ['key'],
+  ['--key'],
   {
     action: 'store',
     required: false, // can be typed during the signing process to avoid leaving the xprv in the shell history
@@ -302,4 +302,4 @@ const run = co(function *(testArgs) {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateXpub: validateKey };
+module.exports = { run, validateKey, db };

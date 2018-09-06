@@ -21,15 +21,39 @@ const utxoNetworks = {
 
 const coinDecimals = {
   btc: 8,
-  ltc: 8,
+  eth: 18,
+  xrp: 6,
   bch: 8,
+  ltc: 8,
   zec: 8,
   tbtc: 8,
-  tltc: 8,
-  xrp: 6
+  teth: 18,
+  txrp: 6,
+  tltc: 8
 };
 
-const WEI_PER_ETH = new BN(10).pow(18);
+const TEN = new BN(10);
+
+const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm) {
+  console.log('Sign Recovery Transaction');
+  console.log('=========================');
+  console.log(`Backup Key: ${ backupKey }`);
+  _.forEach(outputs, function(out) {
+    console.log(`Output Address: ${out.address}`);
+    console.log(`Output Amount: ${out.amount}`);
+  });
+  console.log(`Custom Message: ${customMessage}`);
+  console.log('=========================');
+
+  if (!skipConfirm) {
+    console.log('Please type "go" to confirm: ');
+    const confirm = prompt();
+
+    if (confirm !== 'go') {
+      throw new Error('recovery aborted');
+    }
+  }
+};
 
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   const network = utxoNetworks[recoveryRequest.coin];
@@ -40,19 +64,13 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   }
 
   const transaction = utxoLib.Transaction.fromHex(recoveryRequest.transactionHex, network);
+
+  const outputs = transaction.outs.map(out => ({
+    address: utxoLib.address.fromOutputScript(out.script, network),
+    amount: ( new BN(out.value) ).div( TEN.pow(decimals) ).toString()
+  }));
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
-
-  console.log('Sign Recovery Transaction');
-  console.log('=========================');
-  console.log(`Backup Key: ${recoveryRequest.backupKey}`);
-  _.forEach(transaction.outs, function(output) {
-    const address = utxoLib.address.fromOutputScript(output.script, network);
-
-    console.log(`Output Address: ${address}`);
-    console.log(`Output Amount: ${(output.value / Math.pow(10, decimals)).toFixed(6)}`);
-  });
-  console.log(`Custom Message: ${customMessage}`);
-  console.log('=========================');
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
 
   if (!key) {
     console.log('Please enter the xprv of the wallet for signing: ');
@@ -77,15 +95,6 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
   // force override network as we use btc mainnet xpubs for all utxo coins
   backupKeyNode.keyPair.network = network;
-
-  if (!skipConfirm) {
-    console.log('Please type "go" to confirm: ');
-    const confirm = prompt();
-
-    if (confirm !== 'go') {
-      throw new Error('recovery aborted');
-    }
-  }
 
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
 
@@ -124,20 +133,16 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   const transaction = new EthTx(recoveryRequest.tx);
+  const decimals = coinDecimals[recoveryRequest.coin];
 
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
   const txData = transaction.data;
-  const outputAddress = '0x' + txData.slice(16, 36).toString('hex');
-  const outputAmountWei = new BN(txData.slice(36, 68).toString('hex'), 16);
-  const outputAmount = outputAmountWei.div(WEI_PER_ETH).toString();
+  const outputs = [{
+    address: '0x' + txData.slice(16, 36).toString('hex'),
+    amount: (new BN(txData.slice(36, 68).toString('hex'), 16)).div(TEN.pow(decimals))
+  }];
 
-  console.log('Sign Recovery Transaction');
-  console.log('=========================');
-  console.log(`Backup Key: ${ recoveryRequest.backupKey }`);
-  console.log(`Output Address: ${ outputAddress }`);
-  console.log(`Output Amount: ${ outputAmount }`);
-  console.log(`Custom Message: ${ customMessage }`);
-  console.log('=========================');
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
 
   if (!key) {
     console.log('Please enter the xprv of the wallet for signing: ');
@@ -158,15 +163,6 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
 
   if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
     throw new Error('provided private key does not match public key specified with recovery request');
-  }
-
-  if (!skipConfirm) {
-    console.log('Please type "go" to confirm: ');
-    const confirm = prompt();
-
-    if (confirm !== 'go') {
-      throw new Error('recovery aborted');
-    }
   }
 
   const backupHDNode = prova.HDNode.fromBase58(key);
@@ -178,19 +174,17 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
 };
 
 const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
+  const decimals = coinDecimals[recoveryRequest.coin];
   const transaction = rippleParse.decode(recoveryRequest.txHex);
   const rippleApi = new rippleLib.RippleAPI();
-  const outputAddress = transaction.Destination;
-  const outputAmount = transaction.Amount / Math.pow(10, coinDecimals.xrp);
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : "None";
 
-  console.log('Sign Recovery Transaction');
-  console.log('=========================');
-  console.log(`Backup Key: ${ recoveryRequest.backupKey }`);
-  console.log(`Output Address: ${ outputAddress }`);
-  console.log(`Output Amount: ${ outputAmount }`);
-  console.log(`Custom Message: ${ customMessage }`);
-  console.log('=========================');
+  const outputs = [{
+    address: transaction.Destination,
+    amount: (new BN(transaction.Amount)).div(TEN.pow(decimals))
+  }];
+
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
 
   if (!key) {
     console.log('Please enter the xprv of the wallet for signing: ');
@@ -211,15 +205,6 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
     throw new Error('provided private key does not match public key specified with recovery request');
-  }
-
-  if (!skipConfirm) {
-    console.log('Please type "go" to confirm: ');
-    const confirm = prompt();
-
-    if (confirm !== 'go') {
-      throw new Error('recovery aborted');
-    }
   }
 
   const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.getPublicKeyBuffer().toString('hex'));
