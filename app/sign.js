@@ -1,9 +1,5 @@
 const utxoLib = require('bitgo-utxo-lib');
 const prova = require('prova-lib');
-const EthTx = require('ethereumjs-tx');
-const rippleLib = require('ripple-lib');
-const rippleKeypairs = require('ripple-keypairs');
-const rippleParse = require('ripple-binary-codec');
 const fs = require('fs');
 const _ = require('lodash');
 const BN = require('bignumber.js');
@@ -132,6 +128,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 };
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
+  const EthTx = require('ethereumjs-tx');
+
   const transaction = new EthTx(recoveryRequest.tx);
   const decimals = coinDecimals[recoveryRequest.coin];
 
@@ -174,9 +172,13 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
 };
 
 const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
+  const rippleLib = require('ripple-lib');
+  const rippleApi = new rippleLib.RippleAPI();
+  const rippleKeypairs = require('ripple-keypairs');
+  const rippleParse = require('ripple-binary-codec');
+
   const decimals = coinDecimals[recoveryRequest.coin];
   const transaction = rippleParse.decode(recoveryRequest.txHex);
-  const rippleApi = new rippleLib.RippleAPI();
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : "None";
 
   const outputs = [{
