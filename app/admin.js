@@ -7,7 +7,7 @@ const ArgumentParser = require('argparse').ArgumentParser;
 const pjson = require('../package.json');
 const fs = require('fs');
 const csvParser = require('csv-parse');
-const prova = require('prova-lib');
+const utxoLib = require('bitgo-utxo-lib');
 
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
@@ -30,23 +30,7 @@ importKeys.addArgument(
   [ 'file' ],
   {
     action: 'store',
-    help: 'path to a CSV list of public keys'
-  }
-);
-
-const deriveKeyCommand = subparsers.addParser('derive', { addHelp: true });
-deriveKeyCommand.addArgument(
-  [ 'master' ],
-  {
-    action: 'store',
-    help: 'xpub of the master key (starts with "xpub")'
-  }
-);
-deriveKeyCommand.addArgument(
-  [ 'path' ],
-  {
-    action: 'store',
-    help: 'derivation path of the wallet key (starts with "m/")'
+    help: 'path to a list of public keys generated from admin.js generate'
   }
 );
 
@@ -82,31 +66,82 @@ setVerificationCommand.addArgument(
   }
 );
 
-const validateXpub = function(xpub) {
-  const isValidXpub = /^xpub[1-9a-km-zA-HJ-Z]{107}$/.test(xpub);
+const generateKeysCommand = subparsers.addParser('generate', { addHelp: true });
+generateKeysCommand.addArgument(
+  ['xprv'],
+  {
+    action: 'store',
+    help: 'master private key to derive hardened child keys from'
+  }
+);
+generateKeysCommand.addArgument(
+  ['output'],
+  {
+    action: 'store',
+    help: 'path of file to save generated private keys to'
+  }
+);
+generateKeysCommand.addArgument(
+  ['-n'],
+  {
+    action: 'store',
+    defaultValue: 100000,
+    type: Number,
+    help: 'number of keys to generate'
+  }
+);
+generateKeysCommand.addArgument(
+  ['--start'],
+  {
+    action: 'store',
+    defaultValue: 0,
+    type: Number,
+    help: 'first path to derive (i.e. 0 for m/0\', or 10000 for m/10000\')'
+  }
+);
+
+const deriveKeyCommand = subparsers.addParser('derive', { addHelp: true });
+deriveKeyCommand.addArgument(
+  [ 'master' ],
+  {
+    action: 'store',
+    help: 'xpub of the master key (starts with "xpub")'
+  }
+);
+deriveKeyCommand.addArgument(
+  [ 'path' ],
+  {
+    action: 'store',
+    help: 'derivation path of the wallet key (starts with "m/")'
+  }
+);
+
+const validateKey = function(key) {
+  const isValidXpub = /^xpub[1-9a-km-zA-HJ-Z]{107}$/.test(key.xpub);
 
   if (!isValidXpub) {
-    console.log(`Xpub ${xpub} is not a valid extended public key.`);
+    console.log(`Xpub ${key.xpub} is not a valid extended public key.`);
   }
 
   return isValidXpub;
-}
+};
 
-const saveKeys = co(function *(xpubs) {
-  const xpubDocs = xpubs.filter(validateXpub).map((xpub) => ({
-    xpub: xpub,
+const saveKeys = co(function *(keys) {
+  const keyDocs = keys.filter(validateKey).map((key) => ({
+    xpub: key.xpub,
+    path: key.path,
     keyCount: 0
   }));
 
-  if (xpubDocs.length === 0) {
+  if (keyDocs.length === 0) {
     console.log('No valid public keys. Please make sure all public keys begin with "xpub" and are 111 characters in length.');
     return;
   }
 
-  console.log(`Found ${xpubDocs.length} valid public keys. Pushing to database.`);
+  console.log(`Found ${keyDocs.length} valid public keys. Pushing to database.`);
 
   try {
-    yield MasterKey.insertMany(xpubDocs);
+    yield MasterKey.insertMany(keyDocs);
     console.log('Successfully imported public keys.');
 
     const totalKeys = yield MasterKey.estimatedDocumentCount();
@@ -125,17 +160,9 @@ const handleImportKeys = co(function *(args) {
     throw new Error('please specify the path to a CSV file containing the public keys to import');
   }
 
-  let xpubs = [];
+  const keys = JSON.parse(fs.readFileSync(path, { encoding: 'utf8' }));
 
-  fs.createReadStream(path)
-    .pipe(csvParser())
-    .on('data', function(xpub) {
-      xpubs.push(xpub);
-    })
-    .on('end', co(function *() {
-      xpubs = _.flatten(xpubs); // the CSV parser creates a 2d array of elements if multiple lines are present
-      yield saveKeys(xpubs);
-    }));
+  yield saveKeys(keys);
 });
 
 const handleDeriveKey = function(args) {
@@ -145,6 +172,27 @@ const handleDeriveKey = function(args) {
   } catch (e) {
     console.log(e.message);
   }
+};
+
+const handleGenerateKeys = function(args) {
+  const keys = [];
+
+  const masterNode = utxoLib.HDNode.fromBase58(args.xprv);
+
+  for (let i = args.start; i < args.start + args.n; i++) {
+    const path = 'm/' + i + '\'';
+    console.log(`Generating key ${path} of m/${args.start + args.n - 1}'`);
+
+    const key = {
+      path: path,
+      xpub: masterNode.derivePath(path).neutered().toBase58()
+    };
+
+    keys.push(key);
+  }
+
+  console.log(`Keys generated, saving to ${args.output}`);
+  fs.writeFileSync(args.output, JSON.stringify(keys, null, 2));
 };
 
 const handleVerificationGet = co(function *(args) {
@@ -214,6 +262,9 @@ const run = co(function *(testArgs) {
     case 'derive':
       handleDeriveKey(args);
       break;
+    case 'generate':
+      handleGenerateKeys(args);
+      break;
     case 'verification':
       yield handleVerification(args);
       break;
@@ -223,4 +274,4 @@ const run = co(function *(testArgs) {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateXpub };
+module.exports = { run, validateXpub: validateKey };

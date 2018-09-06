@@ -3,14 +3,23 @@ const request = require('supertest');
 const should = require('should');
 const server = require('../app/app')();
 const _ = require('lodash');
+const Promise = require('bluebird');
+const co = Promise.coroutine;
+
+const MasterKey = require('../app/models/masterkey');
 
 describe('Application Server', function() {
   let agent;
-  before(function() {
+  before(co(function *() {
     agent = request.agent(server);
-  });
+
+    // Add one master key to the test database, to be provisioned later
+    const masterKey = new MasterKey({ xpub: 'xpub68LYUvd1jGgRCLBHHjXtaaXRuYfRXsps9QFK3KoihrkieAX719fZLZoUApch11egYsjMyrL3WgrBRn2RxUS63sr7MTnQEYFKXoGr7nKwQfD', path: 'm/0\'', keyCount: 0 });
+    yield masterKey.save();
+  }));
 
   after(function() {
+    testutils.mongoose.connection.dropDatabase();
     testutils.mongoose.connection.close();
   });
 
@@ -89,7 +98,6 @@ describe('Application Server', function() {
         .then(function (res) {
           res.status.should.eql(200);
           should.exist(res.body.path);
-          res.body.path.substr(0, 2).should.equal('m/');
           should.exist(res.body.masterKey);
           res.body.masterKey.substr(0, 4).should.equal('xpub');
           should.exist(res.body.xpub);
