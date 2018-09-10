@@ -216,6 +216,49 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
   return rippleApi.combine([ recoveryRequest.txHex, cosignedTx.signedTransaction ]).signedTransaction;
 };
 
+const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
+  const EthTx = require('ethereumjs-tx');
+
+  const transaction = new EthTx(recoveryRequest.tx);
+
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
+  const txData = transaction.data;
+  const outputs = [{
+    address: '0x' + txData.slice(16, 36).toString('hex'),
+    amount: new BN(txData.slice(36, 68).toString('hex'), 16)
+  }];
+
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
+
+  if (!key) {
+    console.log('Please enter the xprv of the wallet for signing: ');
+    key = prompt();
+  }
+
+  let backupKeyNode;
+
+  try {
+    backupKeyNode = utxoLib.HDNode.fromBase58(key);
+  } catch (e) {
+    throw new Error('invalid private key');
+  }
+
+  if (backupKeyNode.toBase58() === backupKeyNode.neutered().toBase58()) {
+    throw new Error('please provide the private (not public) wallet key');
+  }
+
+  if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
+    throw new Error('provided private key does not match public key specified with recovery request');
+  }
+
+  const backupHDNode = prova.HDNode.fromBase58(key);
+  const backupSigningKey = backupHDNode.getKey().getPrivateKeyBuffer();
+
+  transaction.sign(backupSigningKey);
+
+  return transaction.serialize().toString('hex');
+};
+
 const handleSign = function(args) {
   const file = args.file;
   const key = args.key;
@@ -231,6 +274,9 @@ const handleSign = function(args) {
       break;
     case 'xrp': case 'txrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
+      break;
+    case 'erc20':
+      txHex = handleSignErc20(recoveryRequest, key, args.confirm);
       break;
     default:
       txHex = handleSignUtxo(recoveryRequest, key, args.confirm);
@@ -249,4 +295,4 @@ const handleSign = function(args) {
   console.log('Done');
 };
 
-module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignErc20 };
