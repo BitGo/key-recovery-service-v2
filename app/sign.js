@@ -11,6 +11,7 @@ const utxoNetworks = {
   ltc: utxoLib.networks.litecoin,
   bch: utxoLib.networks.bitcoincash,
   zec: utxoLib.networks.zcash,
+  dash: utxoLib.networks.dash,
   tltc: utxoLib.networks.litecoin,
   tbtc: utxoLib.networks.testnet
 };
@@ -22,6 +23,7 @@ const coinDecimals = {
   bch: 8,
   ltc: 8,
   zec: 8,
+  dash: 8,
   tbtc: 8,
   teth: 18,
   txrp: 6,
