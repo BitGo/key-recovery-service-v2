@@ -24,10 +24,12 @@ const coinDecimals = {
   ltc: 8,
   zec: 8,
   dash: 8,
+  xlm: 7,
   tbtc: 8,
   teth: 18,
   txrp: 6,
-  tltc: 8
+  tltc: 8,
+  txlm: 7
 };
 
 const TEN = new BN(10);
@@ -181,7 +183,7 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   const decimals = coinDecimals[recoveryRequest.coin];
   const transaction = rippleParse.decode(recoveryRequest.txHex);
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : "None";
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
   const outputs = [{
     address: transaction.Destination,
@@ -216,6 +218,57 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
   const cosignedTx = utils.signXrpWithPrivateKey(recoveryRequest.txHex, privateKeyHex, { signAs: backupAddress });
 
   return rippleApi.combine([ recoveryRequest.txHex, cosignedTx.signedTransaction ]).signedTransaction;
+};
+
+const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
+  const stellar = require('stellar-base');
+
+  if (recoveryRequest.coin === 'xlm') {
+    stellar.Network.usePublicNetwork();
+  } else {
+    stellar.Network.useTestNetwork();
+  }
+
+  const decimals = coinDecimals[recoveryRequest.coin];
+
+  const transaction = new stellar.Transaction(recoveryRequest.tx);
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
+
+  if (transaction.operations.length !== 1) {
+    throw new Error('Recovery transaction is trying to perform multiple operations - aborting');
+  }
+
+  if (transaction.operations[0].type !== 'payment') {
+    throw new Error('Recovery transaction is not a payment transaction - aborting');
+  }
+
+  const outputs = [{
+    address: transaction.operations[0].destination,
+    amount: transaction.operations[0].amount
+  }];
+
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
+
+  if (!key) {
+    console.log('Please enter the private key of the wallet for signing: ');
+    key = prompt();
+  }
+
+  let backupKeypair;
+
+  try {
+    backupKeypair = stellar.Keypair.fromSecret(key);
+  } catch (e) {
+    throw new Error('invalid private key');
+  }
+
+  if (backupKeypair.publicKey() !== recoveryRequest.backupKey) {
+    throw new Error('provided private key does not match public key specified with recovery request');
+  }
+
+  transaction.sign(stellar.Keypair.fromSecret(key));
+
+  return transaction.toEnvelope().toXDR('base64');
 };
 
 const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
@@ -277,6 +330,9 @@ const handleSign = function(args) {
     case 'xrp': case 'txrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
       break;
+    case 'xlm': case'txlm':
+      txHex = handleSignXlm(recoveryRequest, key, args.confirm);
+      break;
     case 'erc20':
       txHex = handleSignErc20(recoveryRequest, key, args.confirm);
       break;
@@ -297,4 +353,4 @@ const handleSign = function(args) {
   console.log('Done');
 };
 
-module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignErc20 };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20 };
