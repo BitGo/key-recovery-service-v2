@@ -6,8 +6,9 @@ const _ = require('lodash');
 const ArgumentParser = require('argparse').ArgumentParser;
 const pjson = require('../package.json');
 const fs = require('fs');
-const csvParser = require('csv-parse');
 const utxoLib = require('bitgo-utxo-lib');
+const stellar = require('stellar-base');
+const stellarHd = require('stellar-hd-wallet');
 
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
@@ -68,7 +69,7 @@ setVerificationCommand.addArgument(
 
 const generateKeysCommand = subparsers.addParser('generate', { addHelp: true });
 generateKeysCommand.addArgument(
-  ['xprv'],
+  ['master'],
   {
     action: 'store',
     help: 'master private key to derive hardened child keys from'
@@ -97,6 +98,16 @@ generateKeysCommand.addArgument(
     defaultValue: 0,
     type: Number,
     help: 'first path to derive (i.e. 0 for m/0\', or 10000 for m/10000\')'
+  }
+);
+generateKeysCommand.addArgument(
+  ['--type'],
+  {
+    action: 'store',
+    defaultValue: 'xprv',
+    choices: ['xprv', 'xlm'],
+    help: 'type of key to generate ("xprv" for coins on the secp256k1 curve / "xlm" for Stellar)',
+    required: false
   }
 );
 
@@ -177,16 +188,33 @@ const handleDeriveKey = function(args) {
 const handleGenerateKeys = function(args) {
   const keys = [];
 
-  const masterNode = utxoLib.HDNode.fromBase58(args.xprv);
+  let masterNode;
+
+  switch (args.type) {
+    case 'xprv':
+      masterNode = utxoLib.HDNode.fromBase58(args.master);
+      break;
+    case 'xlm':
+      masterNode = stellarHd.fromSeed(args.master);
+      break;
+  }
 
   for (let i = args.start; i < args.start + args.n; i++) {
     const path = 'm/' + i + '\'';
     console.log(`Generating key ${path} of m/${args.start + args.n - 1}'`);
 
     const key = {
-      path: path,
-      xpub: masterNode.derivePath(path).neutered().toBase58()
+      path: path
     };
+
+    switch (args.type) {
+      case 'xprv':
+        key.pub = masterNode.derivePath(path).neutered().toBase58();
+        break;
+      case 'xlm':
+        key.pub = stellar.Keypair.fromRawEd25519Seed(masterNode.derive(path)).publicKey();
+        break;
+    }
 
     keys.push(key);
   }

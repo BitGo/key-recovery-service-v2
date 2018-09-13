@@ -31,6 +31,8 @@
     "prompt-sync": "^4.1.6",
     "prova-lib": "^0.2.9",
     "q": "^1.5.1",
+    "stellar-base": "^0.8.3",
+    "stellar-hd-wallet": "0.0.8",
     "superagent": "^3.8.3",
     "validator": "^10.4.0"
   }
