@@ -55,6 +55,26 @@ const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm)
   }
 };
 
+const getHDNodeAndVerify = function(xprv, expectedXpub) {
+  let node;
+
+  try {
+    node = prova.HDNode.fromBase58(xprv);
+  } catch (e) {
+    throw new Error('invalid private key');
+  }
+
+  if (node.toBase58() === node.neutered().toBase58()) {
+    throw new Error('please provide the private (not public) wallet key');
+  }
+
+  if (node.neutered().toBase58() !== expectedXpub) {
+    throw new Error('provided private key does not match public key specified with recovery request');
+  }
+
+  return node;
+};
+
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   const network = utxoNetworks[recoveryRequest.coin];
   const decimals = coinDecimals[recoveryRequest.coin];
@@ -77,21 +97,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     key = prompt();
   }
 
-  let backupKeyNode;
-
-  try {
-    backupKeyNode = utxoLib.HDNode.fromBase58(key);
-  } catch (e) {
-    throw new Error('invalid private key');
-  }
-
-  if (backupKeyNode.toBase58() === backupKeyNode.neutered().toBase58()) {
-    throw new Error('please provide the private (not public) wallet key');
-  }
-
-  if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
-    throw new Error('provided private key does not match public key specified with recovery request');
-  }
+  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
   // force override network as we use btc mainnet xpubs for all utxo coins
   backupKeyNode.keyPair.network = network;
@@ -151,24 +157,9 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
     key = prompt();
   }
 
-  let backupKeyNode;
+  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
-  try {
-    backupKeyNode = utxoLib.HDNode.fromBase58(key);
-  } catch (e) {
-    throw new Error('invalid private key');
-  }
-
-  if (backupKeyNode.toBase58() === backupKeyNode.neutered().toBase58()) {
-    throw new Error('please provide the private (not public) wallet key');
-  }
-
-  if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
-    throw new Error('provided private key does not match public key specified with recovery request');
-  }
-
-  const backupHDNode = prova.HDNode.fromBase58(key);
-  const backupSigningKey = backupHDNode.getKey().getPrivateKeyBuffer();
+  const backupSigningKey = backupKeyNode.getKey().getPrivateKeyBuffer();
 
   transaction.sign(backupSigningKey);
 
@@ -197,24 +188,10 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
     key = prompt();
   }
 
-  let backupKeyNode;
+  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
-  try {
-    backupKeyNode = utxoLib.HDNode.fromBase58(key);
-  } catch (e) {
-    throw new Error('invalid private key');
-  }
-
-  if (backupKeyNode.toBase58() === backupKeyNode.neutered().toBase58()) {
-    throw new Error('please provide the private (not public) wallet key');
-  }
-
-  if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
-    throw new Error('provided private key does not match public key specified with recovery request');
-  }
-
-  const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.getPublicKeyBuffer().toString('hex'));
-  const privateKeyHex = backupKeyNode.keyPair.d.toString(16);
+  const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.keyPair.getPublicKeyBuffer().toString('hex'));
+  const privateKeyHex = backupKeyNode.keyPair.getPrivateKeyBuffer().toString('hex');
   const cosignedTx = utils.signXrpWithPrivateKey(recoveryRequest.txHex, privateKeyHex, { signAs: backupAddress });
 
   return rippleApi.combine([ recoveryRequest.txHex, cosignedTx.signedTransaction ]).signedTransaction;
@@ -290,24 +267,9 @@ const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
     key = prompt();
   }
 
-  let backupKeyNode;
+  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
-  try {
-    backupKeyNode = utxoLib.HDNode.fromBase58(key);
-  } catch (e) {
-    throw new Error('invalid private key');
-  }
-
-  if (backupKeyNode.toBase58() === backupKeyNode.neutered().toBase58()) {
-    throw new Error('please provide the private (not public) wallet key');
-  }
-
-  if (backupKeyNode.neutered().toBase58() !== recoveryRequest.backupKey) {
-    throw new Error('provided private key does not match public key specified with recovery request');
-  }
-
-  const backupHDNode = prova.HDNode.fromBase58(key);
-  const backupSigningKey = backupHDNode.getKey().getPrivateKeyBuffer();
+  const backupSigningKey = backupKeyNode.keyPair.getPrivateKeyBuffer();
 
   transaction.sign(backupSigningKey);
 
