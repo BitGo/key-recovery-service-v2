@@ -6,9 +6,6 @@ const _ = require('lodash');
 const ArgumentParser = require('argparse').ArgumentParser;
 const pjson = require('../package.json');
 const fs = require('fs');
-const utxoLib = require('bitgo-utxo-lib');
-const stellar = require('stellar-base');
-const stellarHd = require('stellar-hd-wallet');
 const crypto = require('crypto');
 
 const db = require('./db.js');
