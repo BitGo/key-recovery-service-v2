@@ -11,6 +11,7 @@ const utxoLib = require('bitgo-utxo-lib');
 
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
+const signingTool = require('./sign.js');
 const WalletKey = require('./models/walletkey.js');
 const utils = require('./utils');
 
@@ -31,6 +32,30 @@ importKeys.addArgument(
   {
     action: 'store',
     help: 'path to a list of public keys generated from admin.js generate'
+  }
+);
+
+const signCommand = subparsers.addParser('sign', { addHelp: true });
+signCommand.addArgument(
+  ['file'],
+  {
+    action: 'store',
+    help: 'path to the recovery request JSON file'
+  }
+);
+signCommand.addArgument(
+  ['--key'],
+  {
+    action: 'store',
+    required: false, // can be typed during the signing process to avoid leaving the xprv in the shell history
+    help: 'private key to sign the transaction with'
+  }
+);
+signCommand.addArgument(
+  ['--confirm'],
+  {
+    action: 'storeTrue',
+    help: 'will not ask for confirmation before signing (be careful!)'
   }
 );
 
@@ -259,6 +284,9 @@ const run = co(function *(testArgs) {
     case 'import':
       yield handleImportKeys(args);
       break;
+    case 'sign':
+      signingTool.handleSign(args);
+      break;
     case 'derive':
       handleDeriveKey(args);
       break;
@@ -274,4 +302,4 @@ const run = co(function *(testArgs) {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateXpub: validateKey };
+module.exports = { run, validateKey, db };

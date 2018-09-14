@@ -3,8 +3,7 @@
 const Promise = require('bluebird');
 const admin = require('../app/admin');
 
-Promise.try(function() {
-  return admin.run();
-}).catch(function(e) {
-  console.log(e.message)
+Promise.try(admin.run).catch(function(e) {
+  console.log(e.message);
+  admin.db.connection.close();
 });
