@@ -2,21 +2,23 @@ const mongoose = require('mongoose');
 const _ = require('lodash');
 
 const masterKeySchema = new mongoose.Schema({
+  type: { type: String, default: 'xpub', enum: ['xpub', 'xlm'] },
   coin: { type: String },
   customerId: { type: String },
-  xpub: { type: String },
+  pub: { type: String },
   path: { type: String },
   keyCount: { type: Number }
 });
 
 masterKeySchema.methods = {
   toJSON: function() {
-    return _.pick(this, ['coin', 'customerId', 'xpub', 'path', 'keyCount']);
+    return _.pick(this, ['type', 'coin', 'customerId', 'pub', 'path', 'keyCount']);
   }
 };
 
 masterKeySchema.index({ customerId: 1, coin: 1 }, { unique: true, sparse: true });
-masterKeySchema.index({ xpub: 1 }, { unique: true });
+masterKeySchema.index({ pub: 1 }, { unique: true });
 masterKeySchema.index({ path: 1 }, { unique: true });
+masterKeySchema.index({ type: 1 });
 
 module.exports = mongoose.connection.model('masterKey', masterKeySchema);

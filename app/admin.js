@@ -9,6 +9,7 @@ const fs = require('fs');
 const utxoLib = require('bitgo-utxo-lib');
 const stellar = require('stellar-base');
 const stellarHd = require('stellar-hd-wallet');
+const crypto = require('crypto');
 
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
@@ -33,6 +34,15 @@ importKeys.addArgument(
   {
     action: 'store',
     help: 'path to a list of public keys generated from admin.js generate'
+  }
+);
+importKeys.addArgument(
+  ['--type'],
+  {
+    action: 'store',
+    help: 'type of key to import (xpub for most coins, xlm for Stellar keys)',
+    defaultValue: 'xpub',
+    choices: ['xpub', 'xlm']
   }
 );
 
@@ -136,6 +146,12 @@ generateKeysCommand.addArgument(
   }
 );
 
+subparsers.addParser('seed', {
+  addHelp: true,
+  description: 'Generates a cryptographically secure random seed to be used for Stellar key derivation.\n' +
+    'Note: To generate a master key for non-Stellar coins, please install BitGo CLI and run "bitgo newkey"'
+});
+
 const deriveKeyCommand = subparsers.addParser('derive', { addHelp: true });
 deriveKeyCommand.addArgument(
   [ 'master' ],
@@ -151,26 +167,53 @@ deriveKeyCommand.addArgument(
     help: 'derivation path of the wallet key (starts with "m/")'
   }
 );
+deriveKeyCommand.addArgument(
+  ['--type'],
+  {
+    action: 'store',
+    help: 'type of key to derive from (xlm for deriving from a Stellar seed)',
+    defaultValue: 'xpub',
+    choices: ['xpub', 'xprv', 'xlm']
+  }
+);
 
-const validateKey = function(key) {
-  const isValidXpub = /^xpub[1-9a-km-zA-HJ-Z]{107}$/.test(key.xpub);
+const validateKey = function(key, type) {
+  const xpubRegex = /^xpub[1-9a-km-zA-HJ-Z]{107}$/;
+  const xlmRegex = /^G[2-7A-Z]{55}$/;
 
-  if (!isValidXpub) {
-    console.log(`Xpub ${key.xpub} is not a valid extended public key.`);
+  if (type === 'xpub' && !xpubRegex.test(key.pub)) {
+    console.log(`BIP32 xpub ${key.pub} is not a valid extended public key.`);
+    return false;
   }
 
-  return isValidXpub;
+  if (type === 'xlm' && !xlmRegex.test(key.pub)) {
+    console.log(`Stellar Lumens key ${key.pub} is not a valid public key.`);
+    return false;
+  }
+
+  return true;
 };
 
-const saveKeys = co(function *(keys) {
-  const keyDocs = keys.filter(validateKey).map((key) => ({
-    xpub: key.xpub,
-    path: key.path,
-    keyCount: 0
+const saveKeys = co(function *(keys, type) {
+  // this extracts the possible values directly from the Mongoose schema, which is considered the most accurate set of possible values
+  const validTypes = MasterKey.schema.path('type').enumValues;
+
+  if (!validTypes.includes(type)) {
+    console.log(`Invalid key type ${type}.`);
+    return;
+  }
+
+  const keyDocs = keys
+    .filter( key => validateKey(key, type))
+    .map( key => ({
+      type: type,
+      pub: key.pub,
+      path: key.path,
+      keyCount: 0
   }));
 
   if (keyDocs.length === 0) {
-    console.log('No valid public keys. Please make sure all public keys begin with "xpub" and are 111 characters in length.');
+    console.log('No valid public keys. Please re-generate and try again.');
     return;
   }
 
@@ -180,10 +223,10 @@ const saveKeys = co(function *(keys) {
     yield MasterKey.insertMany(keyDocs);
     console.log('Successfully imported public keys.');
 
-    const totalKeys = yield MasterKey.estimatedDocumentCount();
-    const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null });
+    const totalKeys = yield MasterKey.countDocuments({ type: type });
+    const availableKeys = yield MasterKey.countDocuments({ type: type, coin: null, customerId: null });
 
-    console.log(`New capacity: ${availableKeys} available keys out of ${totalKeys} total keys.`);
+    console.log(`New capacity: ${availableKeys} available ${type} keys out of ${totalKeys} total ${type} keys.`);
   } catch (e) {
     console.log(e.message);
     console.log('FAILED to import all public keys. This is usually caused by trying to import a public key that already exists in the database.');
@@ -192,18 +235,20 @@ const saveKeys = co(function *(keys) {
 
 const handleImportKeys = co(function *(args) {
   const path = args.file;
+  const type = args.type;
+
   if (path === null) {
     throw new Error('please specify the path to a CSV file containing the public keys to import');
   }
 
   const keys = JSON.parse(fs.readFileSync(path, { encoding: 'utf8' }));
 
-  yield saveKeys(keys);
+  yield saveKeys(keys, type);
 });
 
 const handleDeriveKey = function(args) {
   try {
-    const childKey = utils.deriveChildKey(args.master, args.path);
+    const childKey = utils.deriveChildKey(args.master, args.path, args.type, false);
     console.log(` = ${childKey}`);
   } catch (e) {
     console.log(e.message);
@@ -213,39 +258,26 @@ const handleDeriveKey = function(args) {
 const handleGenerateKeys = function(args) {
   const keys = [];
 
-  let masterNode;
-
-  switch (args.type) {
-    case 'xprv':
-      masterNode = utxoLib.HDNode.fromBase58(args.master);
-      break;
-    case 'xlm':
-      masterNode = stellarHd.fromSeed(args.master);
-      break;
-  }
-
   for (let i = args.start; i < args.start + args.n; i++) {
     const path = 'm/' + i + '\'';
     console.log(`Generating key ${path} of m/${args.start + args.n - 1}'`);
 
     const key = {
+      pub: utils.deriveChildKey(args.master, path, args.type, true),
       path: path
     };
-
-    switch (args.type) {
-      case 'xprv':
-        key.pub = masterNode.derivePath(path).neutered().toBase58();
-        break;
-      case 'xlm':
-        key.pub = stellar.Keypair.fromRawEd25519Seed(masterNode.derive(path)).publicKey();
-        break;
-    }
 
     keys.push(key);
   }
 
   console.log(`Keys generated, saving to ${args.output}`);
   fs.writeFileSync(args.output, JSON.stringify(keys, null, 2));
+};
+
+const handleGenerateHDSeed = function() {
+  const XLM_SEED_LENGTH = 64;
+
+  console.log(crypto.randomBytes(XLM_SEED_LENGTH).toString('hex'));
 };
 
 const handleVerificationGet = co(function *(args) {
@@ -320,6 +352,9 @@ const run = co(function *(testArgs) {
       break;
     case 'generate':
       handleGenerateKeys(args);
+      break;
+    case 'seed':
+      handleGenerateHDSeed();
       break;
     case 'verification':
       yield handleVerification(args);
