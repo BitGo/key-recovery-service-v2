@@ -1,7 +1,7 @@
 module.exports = {
   "name": "Friendly Key Backup Service",
   "serviceurl": "http://keyrecoveryservice.yourdomain.com/",
-  "supportedcoins": ["btc", "eth", "ltc", "bch", "zec", "xrp"],
+  "supportedcoins": ["btc", "eth", "ltc", "bch", "zec", "xrp", "xlm"],
   "host": "0.0.0.0",
   "port": 6833,
   "adminemail": "davidcruz@bitgo.com",

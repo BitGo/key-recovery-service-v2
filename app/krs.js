@@ -47,17 +47,26 @@ const notifyEndpoint = co(function *(key, state) {
   }
 });
 
+const sendDatabaseLowWarning = co(function *(availableKeys, type) {
+  yield utils.sendMailQ(
+    process.config.adminemail,
+    'URGENT: Please replenish the master key database',
+    'databaselow',
+    { availableKeys, type });
+});
+
 /**
  * Selects a random un-assigned master key and sets the coin and customerId fields,
  * returning the key
  * @param coin: coin ticker (btc,eth,etc.)
  * @param customerId: customer ID from the platform
  */
-const provisionMasterKey = co(function *(coin, customerId) {
-  const key = yield MasterKey.findOne({ coin: null, customerId: null });
+const provisionMasterXpub = co(function *(coin, customerId) {
+  const key = yield MasterKey.findOne({ coin: null, customerId: null, type: 'xpub' });
 
   if (!key) {
-    throw utils.ErrorResponse(500, 'no available keys');
+    yield sendDatabaseLowWarning(0, 'xpub');
+    throw utils.ErrorResponse(500, 'no available xpubs');
   }
 
   key.coin = coin;
@@ -65,17 +74,45 @@ const provisionMasterKey = co(function *(coin, customerId) {
 
   yield key.save();
 
-  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null });
+  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: 'xpub' });
 
   if (_.includes(process.config.lowKeyWarningLevels, availableKeys)) {
-    yield utils.sendMailQ(
-      process.config.adminemail,
-      'URGENT: Please replenish the master key database',
-      'databaselow',
-      { availableKeys });
+    yield sendDatabaseLowWarning(availableKeys, 'xpub');
   }
 
   return key;
+});
+
+const getMasterStellarKey = co(function *(customerId, coin) {
+  const masterKey = yield MasterKey.findOne({ coin: null, customerId: null, type: 'xlm' });
+
+  if (!masterKey) {
+    yield sendDatabaseLowWarning(0, 'xlm');
+    throw utils.ErrorResponse(500, 'no available xlm keys');
+  }
+
+  masterKey.coin = coin;
+  masterKey.customerId = customerId;
+
+  yield masterKey.save();
+
+  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: 'xlm' });
+
+  if (_.includes(process.config.lowKeyWarningLevels, availableKeys)) {
+    yield sendDatabaseLowWarning(availableKeys, 'xlm');
+  }
+
+  return masterKey;
+});
+
+const getMasterXpub = co(function *(customerId, coin) {
+  let masterKey = yield MasterKey.findOne({ coin, customerId });
+
+  if (!masterKey) {
+    masterKey = provisionMasterXpub(coin, customerId);
+  }
+
+  return masterKey;
 });
 
 /**
@@ -116,15 +153,18 @@ exports.provisionKey = co(function *(req) {
     }
   }
 
-  let masterKey = yield MasterKey.findOne({ customerId, coin });
+  let masterKey;
 
-  if (!masterKey) {
-    masterKey = yield provisionMasterKey(coin, customerId);
+  if ([ 'xlm', 'txlm' ].includes(coin)) {
+    masterKey = yield getMasterStellarKey();
+    key.pub = masterKey.pub;
+  } else {
+    masterKey = yield getMasterXpub();
+    key.pub = utils.deriveChildKey(masterKey.pub, '' + masterKey.keyCount, 'xpub');
   }
 
-  key.masterKey = masterKey.xpub;
+  key.masterKey = masterKey.pub;
   key.path = masterKey.keyCount;
-  key.xpub = utils.deriveChildKey(key.masterKey, key.path);
 
   key.userEmail = req.body.userEmail;
   key.notificationURL = req.body.notificationURL;

@@ -14,8 +14,11 @@ describe('Application Server', function() {
     agent = request.agent(server);
 
     // Add one master key to the test database, to be provisioned later
-    const masterKey = new MasterKey({ xpub: 'xpub68LYUvd1jGgRCLBHHjXtaaXRuYfRXsps9QFK3KoihrkieAX719fZLZoUApch11egYsjMyrL3WgrBRn2RxUS63sr7MTnQEYFKXoGr7nKwQfD', path: 'm/0\'', keyCount: 0 });
+    const masterKey = new MasterKey({ pub: 'xpub68LYUvd1jGgRCLBHHjXtaaXRuYfRXsps9QFK3KoihrkieAX719fZLZoUApch11egYsjMyrL3WgrBRn2RxUS63sr7MTnQEYFKXoGr7nKwQfD', path: 'm/0\'', keyCount: 0, type: 'xpub' });
+    const xlmKey = new MasterKey({ pub: 'GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7', path: 'm/0\'', keyCount: 0, type: 'xlm' });
+
     yield masterKey.save();
+    yield xlmKey.save();
   }));
 
   after(function() {
@@ -100,13 +103,36 @@ describe('Application Server', function() {
           should.exist(res.body.path);
           should.exist(res.body.masterKey);
           res.body.masterKey.substr(0, 4).should.equal('xpub');
-          should.exist(res.body.xpub);
-          res.body.xpub.substr(0, 4).should.equal('xpub');
+          should.exist(res.body.pub);
+          res.body.pub.substr(0, 4).should.equal('xpub');
           res.body.userEmail.should.equal('test@example.com');
           should.exist(res.body.custom);
           should.exist(res.body.custom.anyCustomField);
           res.body.custom.anyCustomField.should.equal('hello world');
         });
     });
+
+    it('should return a new XLM key', function() {
+      return agent
+        .post('/key')
+        .send({
+          customerId: 'enterprise-id',
+          coin: 'xlm',
+          userEmail: 'test@example.com',
+          custom: {
+            anyCustomField: 'hello XLM'
+          }
+        })
+        .then(function (res) {
+          console.log(JSON.stringify(res.body, null, 2));
+          res.status.should.equal(200);
+          should.exist(res.body.pub);
+          res.body.pub.should.equal('GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7');
+          res.body.userEmail.should.equal('test@example.com');
+          should.exist(res.body.custom);
+          should.exist(res.body.custom.anyCustomField);
+          res.body.custom.anyCustomField.should.equal('hello XLM');
+        })
+    })
   });
 });
