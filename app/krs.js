@@ -83,18 +83,18 @@ const provisionMasterXpub = co(function *(coin, customerId) {
   return key;
 });
 
-const getMasterStellarKey = co(function *(customerId, coin) {
-  const masterKey = yield MasterKey.findOne({ coin: null, customerId: null, type: 'xlm' });
+const getMasterStellarKey = co(function *(coin, customerId) {
+  const key = yield MasterKey.findOne({ coin: null, customerId: null, type: 'xlm' });
 
-  if (!masterKey) {
+  if (!key) {
     yield sendDatabaseLowWarning(0, 'xlm');
     throw utils.ErrorResponse(500, 'no available xlm keys');
   }
 
-  masterKey.coin = coin;
-  masterKey.customerId = customerId;
+  key.coin = coin;
+  key.customerId = customerId;
 
-  yield masterKey.save();
+  yield key.save();
 
   const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: 'xlm' });
 
@@ -102,10 +102,10 @@ const getMasterStellarKey = co(function *(customerId, coin) {
     yield sendDatabaseLowWarning(availableKeys, 'xlm');
   }
 
-  return masterKey;
+  return key;
 });
 
-const getMasterXpub = co(function *(customerId, coin) {
+const getMasterXpub = co(function *(coin, customerId) {
   let masterKey = yield MasterKey.findOne({ coin, customerId });
 
   if (!masterKey) {
@@ -156,10 +156,10 @@ exports.provisionKey = co(function *(req) {
   let masterKey;
 
   if ([ 'xlm', 'txlm' ].includes(coin)) {
-    masterKey = yield getMasterStellarKey();
+    masterKey = yield getMasterStellarKey(coin, customerId);
     key.pub = masterKey.pub;
   } else {
-    masterKey = yield getMasterXpub();
+    masterKey = yield getMasterXpub(coin, customerId);
     key.pub = utils.deriveChildKey(masterKey.pub, '' + masterKey.keyCount, 'xpub');
   }
 
@@ -183,7 +183,7 @@ exports.provisionKey = co(function *(req) {
         'Information about your BitGo backup key',
         'newkeytemplate',
         {
-          xpub: key.xpub,
+          pub: key.pub,
           servicename: process.config.name,
           serviceurl: process.config.serviceurl,
           adminemail: process.config.adminemail,
