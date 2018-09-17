@@ -65,7 +65,6 @@ const provisionMasterXpub = co(function *(coin, customerId) {
   const key = yield MasterKey.findOne({ coin: null, customerId: null, type: 'xpub' });
 
   if (!key) {
-    yield sendDatabaseLowWarning(0, 'xpub');
     throw utils.ErrorResponse(500, 'no available xpubs');
   }
 
@@ -87,7 +86,6 @@ const getMasterStellarKey = co(function *(coin, customerId) {
   const key = yield MasterKey.findOne({ coin: null, customerId: null, type: 'xlm' });
 
   if (!key) {
-    yield sendDatabaseLowWarning(0, 'xlm');
     throw utils.ErrorResponse(500, 'no available xlm keys');
   }
 
