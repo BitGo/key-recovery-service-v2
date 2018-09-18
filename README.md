@@ -1,6 +1,10 @@
 Key Recovery Service
 ====================
-The key recovery service dispenses extended public keys (xpubs) to requesters for use as backup keys in multisig wallets. Dispensed keys are compatible with all coins which implement the [BIP32 key derivation scheme](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki).
+The key recovery service dispenses cryptocurrency public keys to requesters for use as backup keys in multisig wallets.
+
+This project supports the following key schemes:
+ - [BIP32 Extended Public Keys](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) -- compatible with Bitcoin, Ethereum, Litecoin, and most major cryptocurrencies)
+ - Stellar Keypairs -- compatible with Stellar Lumens
 
 This service implements:
 
@@ -31,26 +35,33 @@ The key server is BitGo's interface to the KRS service. It is responsible for st
 7. The service will be available via `http://localhost:6833/key`
 8. Obtain a key by issuing a curl command like:
 
-`curl -h "Content-Type: application/json" -d "{ "customerId": "123abc", "coin: "btc", "userEmail": "user@example.com", "custom": { } }" http://localhost:6833/key`
+`curl -h "Content-Type: application/json" -d "{ "customerId": "123abc", "coin": "btc", "userEmail": "user@example.com", "custom": { } }" http://localhost:6833/key`
 
 Replace `user@example.com` with your email in the above example to receive an email with your backup key.
 
 Offline Environment Setup
 ====================
-An offline environment is required for generating a master key, deriving hardened customer keys, and signing recovery transactions.
+An offline environment is required for generating master keys, deriving hardened customer keys, and signing recovery transactions.
 
 1. Install [BitGo CLI](https://github.com/BitGo/bitgo-cli) and the KRSv2 admin tool (``bin/admin.js``) on the offline environment
-2. Generate a random key pair with ``bitgo newkey``.
+2. Generate a random BIP32 key pair with ``bitgo newkey``.
 3. Shard the key with [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing) with the ``bitgo splitkeys`` command.
 4. The key shards of the master private key **must** be stored securely. At a minimum, BitGo requires KRS operators to store keys with an industry-approved encryption standard such as AES-256. The encryption password **must** contain at least 16 characters, including uppercase and lowercase letters, numbers, and symbols.
 5. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to the ``keys.json`` file. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
 
-    ``bin/admin.js generate [xprv] --start 0 -n 1000000``
+    ``bin/admin.js generate <xprv> xpubs.json --start 0 -n 1000000``
     
-6. Transfer the keys.json file to the online key server via flash drive, SD card, or other physical medium.
-7. Import the public keys to the key server's database with
+6. Generate a random Stellar HD seed with ``bin/admin.js seed``
+7. Derive a large number of customer-specific public keys. These hardened Stellar keys will be allocated to wallets enrolling with the KRS server.
 
-    ``bin/admin.js import keys.json``
+    ``bin/admin.js generate <seed> xlm_keys.json --start 0 -n 1000000 --type xlm``
+    
+8. Transfer the xpubs.json and xlm_keys.json files to the online key server via flash drive, SD card, or other physical medium.
+9. Import the public keys to the key server's database with
+
+    ``bin/admin.js import xpubs.json``
+    
+    ``bin/admin.js import xlm_keys.json --type xlm``
 
 Configuration
 ====================
@@ -66,18 +77,18 @@ The KRS server must be configured with your service's branding, administrator em
 Offline Signing Tool
 ====================
 The offline signing tool can be accessed with:
-``node bin/admin.js sign``
+``bin/admin.js sign``
 
 ```
-usage: bin/admin.js sign [-h] [FILE] [KEY] [--confirm]
+usage: admin.js sign [-h] [--key KEY] [--confirm] file
 
-Tool to sign recovery JSON offline (for KRS owners recovery)
+Positional arguments:
+  file        path to the recovery request JSON file
 
 Optional arguments:
-  -h, --help            Show this help message and exit.
-  -v, --version         Show program's version number and exit.
-  FILE                  Input file of recovery request JSON
-  KEY                   xprv (private key) for signing
+  -h, --help  Show this help message and exit.
+  --key KEY   private key to sign the transaction with (optional - will be prompted for if not specified here)
+  --confirm   will not ask for confirmation before signing (be careful!)
 ```
 
 In a recovery scenario, the user or BitGo will provide you with a recovery file containing:
