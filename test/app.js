@@ -124,7 +124,6 @@ describe('Application Server', function() {
           }
         })
         .then(function (res) {
-          console.log(JSON.stringify(res.body, null, 2));
           res.status.should.equal(200);
           should.exist(res.body.pub);
           res.body.pub.should.equal('GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7');

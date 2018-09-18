@@ -61,8 +61,10 @@ const sendDatabaseLowWarning = co(function *(availableKeys, type) {
  * @param coin: coin ticker (btc,eth,etc.)
  * @param customerId: customer ID from the platform
  */
-const provisionMasterXpub = co(function *(coin, customerId) {
-  const key = yield MasterKey.findOne({ coin: null, customerId: null, type: 'xpub' });
+const provisionMasterKey = co(function *(coin, customerId) {
+  const keyType = process.config.supportedcoins[coin];
+
+  const key = yield MasterKey.findOne({ coin: null, customerId: null, type: keyType });
 
   if (!key) {
     throw utils.ErrorResponse(500, 'no available xpubs');
@@ -82,32 +84,17 @@ const provisionMasterXpub = co(function *(coin, customerId) {
   return key;
 });
 
-const getMasterStellarKey = co(function *(coin, customerId) {
-  const key = yield MasterKey.findOne({ coin: null, customerId: null, type: 'xlm' });
-
-  if (!key) {
-    throw utils.ErrorResponse(500, 'no available xlm keys');
-  }
-
-  key.coin = coin;
-  key.customerId = customerId;
-
-  yield key.save();
-
-  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: 'xlm' });
-
-  if (_.includes(process.config.lowKeyWarningLevels, availableKeys)) {
-    yield sendDatabaseLowWarning(availableKeys, 'xlm');
-  }
-
-  return key;
-});
-
+/**
+ * Tries to find an already assigned xpub for the user, or provisions one if one is not available
+ * @param coin: coin ticker (btc, eth, etc.)
+ * @param customerId: user or enterprise ID from BitGo
+ * @return {MasterKey} the master key to use for derivation
+ */
 const getMasterXpub = co(function *(coin, customerId) {
   let masterKey = yield MasterKey.findOne({ coin, customerId });
 
   if (!masterKey) {
-    masterKey = provisionMasterXpub(coin, customerId);
+    masterKey = provisionMasterKey(coin, customerId);
   }
 
   return masterKey;
@@ -132,7 +119,7 @@ exports.provisionKey = co(function *(req) {
     throw utils.ErrorResponse(400, 'coin type required');
   }
 
-  if (!process.config.supportedcoins.includes(req.body.coin)) {
+  if (!process.config.supportedcoins[coin]) {
     throw utils.ErrorResponse(400, 'unsupported coin');
   }
 
@@ -153,10 +140,12 @@ exports.provisionKey = co(function *(req) {
 
   let masterKey;
 
-  if ([ 'xlm', 'txlm' ].includes(coin)) {
-    masterKey = yield getMasterStellarKey(coin, customerId);
+  if (process.config.supportedcoins[coin] === 'xlm') {
+    // ALWAYS provision a new master key for Stellar wallets, and use the master key as the wallet key
+    masterKey = yield provisionMasterKey(coin, customerId);
     key.pub = masterKey.pub;
   } else {
+    // find the correct master key (assigning if necessary), and derive a wallet key off of it
     masterKey = yield getMasterXpub(coin, customerId);
     key.pub = utils.deriveChildKey(masterKey.pub, '' + masterKey.keyCount, 'xpub');
   }
