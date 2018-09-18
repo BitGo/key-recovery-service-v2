@@ -47,6 +47,14 @@ const notifyEndpoint = co(function *(key, state) {
   }
 });
 
+const sendDatabaseLowWarning = co(function *(availableKeys, type) {
+  yield utils.sendMailQ(
+    process.config.adminemail,
+    'URGENT: Please replenish the master key database',
+    'databaselow',
+    { availableKeys, type });
+});
+
 /**
  * Selects a random un-assigned master key and sets the coin and customerId fields,
  * returning the key
@@ -54,10 +62,12 @@ const notifyEndpoint = co(function *(key, state) {
  * @param customerId: customer ID from the platform
  */
 const provisionMasterKey = co(function *(coin, customerId) {
-  const key = yield MasterKey.findOne({ coin: null, customerId: null });
+  const keyType = process.config.supportedcoins[coin];
+
+  const key = yield MasterKey.findOne({ coin: null, customerId: null, type: keyType });
 
   if (!key) {
-    throw utils.ErrorResponse(500, 'no available keys');
+    throw utils.ErrorResponse(500, `no available ${keyType} keys`);
   }
 
   key.coin = coin;
@@ -65,17 +75,29 @@ const provisionMasterKey = co(function *(coin, customerId) {
 
   yield key.save();
 
-  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null });
+  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: keyType });
 
   if (_.includes(process.config.lowKeyWarningLevels, availableKeys)) {
-    yield utils.sendMailQ(
-      process.config.adminemail,
-      'URGENT: Please replenish the master key database',
-      'databaselow',
-      { availableKeys });
+    yield sendDatabaseLowWarning(availableKeys, keyType);
   }
 
   return key;
+});
+
+/**
+ * Tries to find an already assigned xpub for the user, or provisions one if one is not available
+ * @param coin: coin ticker (btc, eth, etc.)
+ * @param customerId: user or enterprise ID from BitGo
+ * @return {MasterKey} the master key to use for derivation
+ */
+const getMasterXpub = co(function *(coin, customerId) {
+  let masterKey = yield MasterKey.findOne({ coin, customerId });
+
+  if (!masterKey) {
+    masterKey = provisionMasterKey(coin, customerId);
+  }
+
+  return masterKey;
 });
 
 /**
@@ -97,7 +119,7 @@ exports.provisionKey = co(function *(req) {
     throw utils.ErrorResponse(400, 'coin type required');
   }
 
-  if (!process.config.supportedcoins.includes(req.body.coin)) {
+  if (!process.config.supportedcoins[coin]) {
     throw utils.ErrorResponse(400, 'unsupported coin');
   }
 
@@ -116,15 +138,20 @@ exports.provisionKey = co(function *(req) {
     }
   }
 
-  let masterKey = yield MasterKey.findOne({ customerId, coin });
+  let masterKey;
 
-  if (!masterKey) {
+  if (process.config.supportedcoins[coin] === 'xlm') {
+    // ALWAYS provision a new master key for Stellar wallets, and use the master key as the wallet key
     masterKey = yield provisionMasterKey(coin, customerId);
+    key.pub = masterKey.pub;
+  } else {
+    // find the correct master key (assigning if necessary), and derive a wallet key off of it
+    masterKey = yield getMasterXpub(coin, customerId);
+    key.pub = utils.deriveChildKey(masterKey.pub, '' + masterKey.keyCount, 'xpub');
   }
 
-  key.masterKey = masterKey.xpub;
+  key.masterKey = masterKey.pub;
   key.path = masterKey.keyCount;
-  key.xpub = utils.deriveChildKey(key.masterKey, key.path);
 
   key.userEmail = req.body.userEmail;
   key.notificationURL = req.body.notificationURL;
@@ -143,7 +170,7 @@ exports.provisionKey = co(function *(req) {
         'Information about your BitGo backup key',
         'newkeytemplate',
         {
-          xpub: key.xpub,
+          pub: key.pub,
           servicename: process.config.name,
           serviceurl: process.config.serviceurl,
           adminemail: process.config.adminemail,

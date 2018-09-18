@@ -2,13 +2,16 @@ const should = require('should');
 
 const testutils = require('./testutils');
 const admin = require('../app/admin.js');
-const MasterKey = require('../app/models/masterkey');
 const WalletKey = require('../app/models/walletkey');
 const utils = require('../app/utils.js');
 
 describe('Offline Admin Tool', function() {
   before(function() {
     testutils.mongoose.connection.dropDatabase();
+  });
+
+  after(function() {
+    testutils.mongoose.connection.close();
   });
 
   describe('Xpub validation', function() {
@@ -19,29 +22,29 @@ describe('Offline Admin Tool', function() {
     // and successfully saved to local Mongo instance
     describe('failure', function() {
       it('should fail if length is not 111', function() {
-        const SHORT_XPUB = { path: 'm/0\'', xpub: 'xpub1234567890'};
+        const SHORT_XPUB = { path: 'm/0\'', pub: 'xpub1234567890' };
 
-        admin.validateKey(SHORT_XPUB).should.equal(false);
+        admin.validateKey(SHORT_XPUB, 'xpub').should.equal(false);
       });
 
       it('should fail if does not start with xpub', function() {
-        const BAD_PREFIX_XPUB = { path: 'm/0\'', xpub: 'xprv9wHokC2KXdTSpEepFcu53hMDUHYfAtTaLEJEMyxBPAMf78hJg17WhL5FyeDUQH5KWmGjGgEb2j74gsZqgupWpPbZgP6uFmP8MYEy5BNbyET'};
+        const BAD_PREFIX_XPUB = { path: 'm/0\'', pub: 'xprv9wHokC2KXdTSpEepFcu53hMDUHYfAtTaLEJEMyxBPAMf78hJg17WhL5FyeDUQH5KWmGjGgEb2j74gsZqgupWpPbZgP6uFmP8MYEy5BNbyET'};
 
-        admin.validateKey(BAD_PREFIX_XPUB).should.equal(false);
+        admin.validateKey(BAD_PREFIX_XPUB, 'xpub').should.equal(false);
       });
 
       it('should fail if not base58 valid', function() {
-        const BAD_CHARS_XPUB = { path: 'm/0\'', xpub: 'xpub0OIl0OIl6t7aLemM4KiBoLBYQ5j9G2SVpNTojw7Vki3j7wcM3NRPVmDjnjwQREzPcywEg793M89odNXWneRQkn1eWjptpukDwJQVgVLRHKV' };
+        const BAD_CHARS_XPUB = { path: 'm/0\'', pub: 'xpub0OIl0OIl6t7aLemM4KiBoLBYQ5j9G2SVpNTojw7Vki3j7wcM3NRPVmDjnjwQREzPcywEg793M89odNXWneRQkn1eWjptpukDwJQVgVLRHKV' };
 
-        admin.validateKey(BAD_CHARS_XPUB).should.equal(false);
+        admin.validateKey(BAD_CHARS_XPUB, 'xpub').should.equal(false);
       });
     });
 
     describe('success', function() {
       it('should succeed with a valid key', function() {
-        const GOOD_XPUB = { path: 'm/0\'', xpub: 'xpub6B7XuUcPQ9MeszNzaTTGtni9W79MmFnHa7FUe7Hrbv3pefnaDFCHtJWaWdg1FVbocHhivnCRTCbHTjDrMBEyAGDJHGyqCnLhtEWP2rtb1sL' };
+        const GOOD_XPUB = { path: 'm/0\'', pub: 'xpub6B7XuUcPQ9MeszNzaTTGtni9W79MmFnHa7FUe7Hrbv3pefnaDFCHtJWaWdg1FVbocHhivnCRTCbHTjDrMBEyAGDJHGyqCnLhtEWP2rtb1sL' };
 
-        admin.validateKey(GOOD_XPUB).should.equal(true);
+        admin.validateKey(GOOD_XPUB, 'xpub').should.equal(true);
       });
     });
   });
@@ -54,15 +57,15 @@ describe('Offline Admin Tool', function() {
       it('should fail with an invalid xpub', function() {
         const BAD_XPUB = 'xpub55555';
 
-        (function() { admin.deriveKey(BAD_XPUB, 'm/0') }).should.throw(Error);
+        (function() { utils.deriveChildKey(BAD_XPUB, 'm/0', 'xpub') }).should.throw(Error);
       });
 
       it('should fail with an invalid derivation path', function() {
-        (function() { admin.deriveKey(MASTER_XPUB, 'derivation path' )}).should.throw(Error);
+        (function() { utils.deriveChildKey(MASTER_XPUB, 'derivation path', 'xpub') }).should.throw(Error);
       });
 
       it('should fail if trying to derive hardened index with xpub', function() {
-        (function() { admin.deriveKey(MASTER_XPUB, 'm/0\'' )}).should.throw(Error);
+        (function() { utils.deriveChildKey(MASTER_XPUB, 'm/0\'', 'xpub') }).should.throw(Error);
       })
     });
 
@@ -71,10 +74,10 @@ describe('Offline Admin Tool', function() {
       it('should find m/0 of test vector 2', function() {
         const M_0 = 'xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH';
 
-        utils.deriveChildKey(MASTER_XPUB, 'm/0').should.equal(M_0);
+        utils.deriveChildKey(MASTER_XPUB, 'm/0', 'xpub').should.equal(M_0);
       })
     })
-  })
+  });
 
   describe('Verification', function() {
     before(function() {

@@ -3,6 +3,8 @@ const nodemailer = require('nodemailer');
 const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
 const prova = require('prova-lib');
+const stellar = require('stellar-base');
+const stellarHd = require('stellar-hd-wallet');
 
 const rippleParse = require('ripple-binary-codec');
 const rippleKeypairs = require('ripple-keypairs');
@@ -89,10 +91,22 @@ exports.formatBTCFromSatoshis = function(satoshis) {
   return (satoshis * 1e-8).toFixed(4);
 };
 
-exports.deriveChildKey = function(masterXpub, derivationPath) {
-  const masterNode = prova.HDNode.fromBase58(masterXpub);
+exports.deriveChildKey = function(master, derivationPath, type, neuter) {
+  if (type === 'xpub' || type === 'xprv') {
+    const masterNode = prova.HDNode.fromBase58(master);
+    const childKey = masterNode.derivePath(derivationPath);
 
-  return masterNode.derivePath(derivationPath).toBase58();
+    if (neuter) {
+      return childKey.neutered().toBase58();
+    }
+
+    return childKey.toBase58();
+  } else if (type === 'xlm') {
+    const masterNode = stellarHd.fromSeed(master);
+    const childKey = stellar.Keypair.fromRawEd25519Seed(masterNode.derive(derivationPath));
+
+    return childKey.publicKey();
+  }
 };
 
 // Ripple signing functions from BitGoJS
