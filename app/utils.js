@@ -87,10 +87,6 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
   return sendMail(mailOptions);
 };
 
-exports.formatBTCFromSatoshis = function(satoshis) {
-  return (satoshis * 1e-8).toFixed(4);
-};
-
 exports.deriveChildKey = function(master, derivationPath, type, neuter) {
   if (type === 'xpub' || type === 'xprv') {
     const masterNode = prova.HDNode.fromBase58(master);
