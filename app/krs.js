@@ -67,7 +67,7 @@ const provisionMasterKey = co(function *(coin, customerId) {
   const key = yield MasterKey.findOne({ coin: null, customerId: null, type: keyType });
 
   if (!key) {
-    throw utils.ErrorResponse(500, 'no available xpubs');
+    throw utils.ErrorResponse(500, `no available ${keyType} keys`);
   }
 
   key.coin = coin;
@@ -75,10 +75,10 @@ const provisionMasterKey = co(function *(coin, customerId) {
 
   yield key.save();
 
-  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: 'xpub' });
+  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: keyType });
 
   if (_.includes(process.config.lowKeyWarningLevels, availableKeys)) {
-    yield sendDatabaseLowWarning(availableKeys, 'xpub');
+    yield sendDatabaseLowWarning(availableKeys, keyType);
   }
 
   return key;
