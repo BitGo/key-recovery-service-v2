@@ -3,7 +3,7 @@ Key Recovery Service
 The key recovery service dispenses cryptocurrency public keys to requesters for use as backup keys in multisig wallets.
 
 This project supports the following key schemes:
- - [BIP32 Extended Public Keys](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) -- compatible with Bitcoin, Ethereum, Litecoin, and most major cryptocurrencies)
+ - [BIP32 Extended Public Keys](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) -- compatible with Bitcoin, Ethereum, Litecoin, and most major cryptocurrencies
  - Stellar Keypairs -- compatible with Stellar Lumens
 
 This service implements:
