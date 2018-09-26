@@ -10,7 +10,7 @@ const MasterKey = require('../app/models/masterkey');
 
 describe('Application Server', function() {
   let agent;
-  before(co(function *() {
+  before(function () {
     testutils.mongoose.connection.dropDatabase();
     agent = request.agent(server);
 
@@ -18,9 +18,9 @@ describe('Application Server', function() {
     const masterKey = new MasterKey({ pub: 'xpub68LYUvd1jGgRCLBHHjXtaaXRuYfRXsps9QFK3KoihrkieAX719fZLZoUApch11egYsjMyrL3WgrBRn2RxUS63sr7MTnQEYFKXoGr7nKwQfD', path: 'm/0\'', keyCount: 0, type: 'xpub' });
     const xlmKey = new MasterKey({ pub: 'GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7', path: 'm/0\'', keyCount: 0, type: 'xlm' });
 
-    yield masterKey.save();
-    yield xlmKey.save();
-  }));
+    masterKey.save();
+    xlmKey.save();
+  });
 
   after(function() {
     testutils.mongoose.connection.close();
