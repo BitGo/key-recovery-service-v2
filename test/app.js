@@ -88,7 +88,7 @@ describe('Application Server', function() {
     });
 
     it('should return a new key', function () {
-      return agent
+      agent
         .post('/key')
         .send({
           customerId: 'enterprise-id',
@@ -98,7 +98,7 @@ describe('Application Server', function() {
             'anyCustomField': 'hello world'
           }
         })
-        .then(function (res) {
+        .end(function (err, res) {
           res.status.should.eql(200);
           should.exist(res.body.path);
           should.exist(res.body.masterKey);
@@ -113,7 +113,7 @@ describe('Application Server', function() {
     });
 
     it('should return a new XLM key', function() {
-      return agent
+      agent
         .post('/key')
         .send({
           customerId: 'enterprise-id',
@@ -123,7 +123,7 @@ describe('Application Server', function() {
             anyCustomField: 'hello XLM'
           }
         })
-        .then(function (res) {
+        .end(function (err, res) {
           res.status.should.equal(200);
           should.exist(res.body.pub);
           res.body.pub.should.equal('GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7');
