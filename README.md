@@ -35,7 +35,7 @@ The key server is BitGo's interface to the KRS service. It is responsible for st
 7. The service will be available via `http://localhost:6833/key`
 8. Obtain a key by issuing a curl command like:
 
-`curl -h "Content-Type: application/json" -d "{ "customerId": "123abc", "coin": "btc", "userEmail": "user@example.com", "custom": { } }" http://localhost:6833/key`
+`curl -H "Content-Type: application/json" -d '{ "customerId": "123abc", "coin": "btc", "userEmail": "user@example.com", "custom": { } }' http://localhost:6833/key`
 
 Replace `user@example.com` with your email in the above example to receive an email with your backup key.
 
