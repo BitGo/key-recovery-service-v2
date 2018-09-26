@@ -11,6 +11,7 @@ const MasterKey = require('../app/models/masterkey');
 describe('Application Server', function() {
   let agent;
   before(co(function *() {
+    testutils.mongoose.connection.dropDatabase();
     agent = request.agent(server);
 
     // Add one master key to the test database, to be provisioned later
@@ -22,7 +23,6 @@ describe('Application Server', function() {
   }));
 
   after(function() {
-    testutils.mongoose.connection.dropDatabase();
     testutils.mongoose.connection.close();
   });
 

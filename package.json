@@ -4,7 +4,7 @@
   "description": "Reference implementation of the Key Recovery Service protocol for dispensing public keys",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/_mocha --timeout 20000 --recursive test/",
+    "test": "./node_modules/mocha/bin/_mocha --timeout 20000 --recursive test/",
     "start": "node bin/server.js"
   },
   "license": "MIT",
