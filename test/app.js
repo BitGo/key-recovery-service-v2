@@ -10,19 +10,19 @@ const MasterKey = require('../app/models/masterkey');
 
 describe('Application Server', function() {
   let agent;
-  before(co(function *() {
+  before(function () {
+    testutils.mongoose.connection.dropDatabase();
     agent = request.agent(server);
 
     // Add one master key to the test database, to be provisioned later
     const masterKey = new MasterKey({ pub: 'xpub68LYUvd1jGgRCLBHHjXtaaXRuYfRXsps9QFK3KoihrkieAX719fZLZoUApch11egYsjMyrL3WgrBRn2RxUS63sr7MTnQEYFKXoGr7nKwQfD', path: 'm/0\'', keyCount: 0, type: 'xpub' });
     const xlmKey = new MasterKey({ pub: 'GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7', path: 'm/0\'', keyCount: 0, type: 'xlm' });
 
-    yield masterKey.save();
-    yield xlmKey.save();
-  }));
+    masterKey.save();
+    xlmKey.save();
+  });
 
   after(function() {
-    testutils.mongoose.connection.dropDatabase();
     testutils.mongoose.connection.close();
   });
 
@@ -88,7 +88,7 @@ describe('Application Server', function() {
     });
 
     it('should return a new key', function () {
-      return agent
+      agent
         .post('/key')
         .send({
           customerId: 'enterprise-id',
@@ -98,7 +98,7 @@ describe('Application Server', function() {
             'anyCustomField': 'hello world'
           }
         })
-        .then(function (res) {
+        .end(function (err, res) {
           res.status.should.eql(200);
           should.exist(res.body.path);
           should.exist(res.body.masterKey);
@@ -113,7 +113,7 @@ describe('Application Server', function() {
     });
 
     it('should return a new XLM key', function() {
-      return agent
+      agent
         .post('/key')
         .send({
           customerId: 'enterprise-id',
@@ -123,7 +123,7 @@ describe('Application Server', function() {
             anyCustomField: 'hello XLM'
           }
         })
-        .then(function (res) {
+        .end(function (err, res) {
           res.status.should.equal(200);
           should.exist(res.body.pub);
           res.body.pub.should.equal('GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7');

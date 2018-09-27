@@ -75,19 +75,19 @@ const verificationCommands = verificationParser.addSubparsers({
 
 const getVerificationCommand = verificationCommands.addParser('get', { addHelp: true });
 getVerificationCommand.addArgument(
-  ['xpub'],
+  ['pub'],
   {
     action: 'store',
-    help: 'public key of the wallet (starts with "xpub")'
+    help: 'public key of the wallet'
   }
 );
 
 const setVerificationCommand = verificationCommands.addParser('set', { addHelp: true });
 setVerificationCommand.addArgument(
-  ['xpub'],
+  ['pub'],
   {
     action: 'store',
-    help: 'public key of the wallet (starts with "xpub")'
+    help: 'public key of the wallet'
   }
 );
 setVerificationCommand.addArgument(
@@ -278,12 +278,12 @@ const handleGenerateHDSeed = function() {
 };
 
 const handleVerificationGet = co(function *(args) {
-  const xpub = args.xpub;
+  const pub = args.pub;
 
-  const key = yield WalletKey.findOne({ xpub }).lean();
+  const key = yield WalletKey.findOne({ pub }).lean();
 
   if (key === null) {
-    throw new Error(`Unable to find wallet key: ${xpub}`);
+    throw new Error(`Unable to find wallet key: ${pub}`);
   }
 
   if (_.isUndefined(key.verificationInfo)) {
@@ -294,7 +294,7 @@ const handleVerificationGet = co(function *(args) {
   const formattedVerificationInfo = key.verificationInfo.replace(/\n/g, '\n\t\t\t');
 
   console.log();
-  console.log(`Key:\t\t\t${key.xpub}`);
+  console.log(`Key:\t\t\t${key.pub}`);
   console.log(`Master Key:\t\t${key.masterKey}`);
   console.log(`User Email:\t\t${key.userEmail}`);
   console.log(`Verification Info:\t${formattedVerificationInfo}`);
@@ -305,10 +305,10 @@ const handleVerificationGet = co(function *(args) {
 });
 
 const handleVerificationSet = co(function *(args) {
-  const key = yield WalletKey.findOne({ xpub: args.xpub });
+  const key = yield WalletKey.findOne({ pub: args.pub });
 
   if (key === null) {
-    console.log(`Unable to find wallet key: ${args.xpub}`);
+    console.log(`Unable to find wallet key: ${args.pub}`);
     return;
   }
 
@@ -316,7 +316,7 @@ const handleVerificationSet = co(function *(args) {
 
   try {
     yield key.save();
-    console.log(`Successfully updated verification info for key ${args.xpub}`);
+    console.log(`Successfully updated verification info for key ${args.pub}`);
   } catch (e) {
     console.log(e.message);
     console.log('FAILED to update verification info on key.');

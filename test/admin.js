@@ -82,7 +82,7 @@ describe('Offline Admin Tool', function() {
   describe('Verification', function() {
     before(function() {
       const key = new WalletKey({
-        xpub: 'xpub6AHA9hZDN11k2ijHMeS5QqHx2KP9aMBRhTDqANMnwVtdyw2TDYRmF8PjpvwUFcL1Et8Hj59S3gTSMcUQ5gAqTz3Wd8EsMTmF3DChhqPQBnU',
+        pub: 'xpub6AHA9hZDN11k2ijHMeS5QqHx2KP9aMBRhTDqANMnwVtdyw2TDYRmF8PjpvwUFcL1Et8Hj59S3gTSMcUQ5gAqTz3Wd8EsMTmF3DChhqPQBnU',
         userEmail: 'tester@bitgo.com',
         verificationInfo: 'verify user\'s identity by signed letter delivered by carrier pigeon'
       });

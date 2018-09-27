@@ -1,19 +1,15 @@
 const crypto = require('crypto');
-const mongoose = require('mongoose');
-const moment = require('moment');
 const Promise = require('bluebird');
 const co = Promise.coroutine;
 
 const request = require('superagent');
 
-const Q = require('q');
 const _ = require('lodash');
 
 const utils = require('./utils');
 
 const MasterKey = require('./models/masterkey');
 const WalletKey = require('./models/walletkey');
-const RecoveryRequest = require('./models/recoveryrequest');
 
 /**
  * Makes a POST request to an endpoint specified by the customer. This is used by heavy API customers
@@ -187,103 +183,3 @@ exports.provisionKey = co(function *(req) {
 
   return key;
 });
-
-exports.validateKey = function(req) {
-  var userEmail = req.query && req.query.userEmail;
-  var xpub = req.params.xpub;
-
-  if (_.isEmpty(userEmail) || _.isEmpty(xpub)) {
-    throw utils.ErrorResponse(400, 'userEmail and xpub required');
-  }
-
-  return Key.findOneQ({userEmail: userEmail, xpub: xpub})
-  .then(function(key) {
-    if (!key) {
-      throw utils.ErrorResponse(404, 'key and username combination not found');
-    }
-    return key;
-  });
-};
-
-exports.requestRecovery = function(req) {
-  var xpub = req.body.xpub;
-  var userEmail = req.body.userEmail;
-  var transactionHex = req.body.transactionHex;
-  var inputs = req.body.inputs;
-  var custom = req.body.custom;
-
-  if (_.isEmpty(xpub) || _.isEmpty(userEmail) || _.isEmpty(transactionHex) || _.isEmpty(inputs)) {
-    throw utils.ErrorResponse(400, 'xpub, userEmail, transactionHex and inputs required');
-  }
-
-  var recoveryRequest = {
-    xpub: xpub,
-    userEmail: userEmail,
-    transactionHex: transactionHex,
-    inputs: inputs,
-    custom: custom
-  };
-
-  var sendEmailToUser = function() {
-    return utils.sendMailQ(
-      userEmail,
-      "Bitcoin Recovery request initiated on " + process.config.name + " using your backup key",
-      "recoveryusertemplate",
-      {
-        xpub: xpub,
-        servicename: process.config.name,
-        serviceurl: process.config.serviceurl,
-        adminemail: process.config.adminemail,
-        useremail: userEmail,
-        message: custom && custom.message
-      }
-    );
-  };
-
-  var sendEmailToAdmin = function() {
-    return utils.sendMailQ(
-      process.config.adminemail,
-      "Bitcoin Recovery request initiated on " + process.config.name + " for " + userEmail,
-      "recoveryadmintemplate",
-      {
-        xpub: xpub,
-        servicename: process.config.name,
-        serviceurl: process.config.serviceurl,
-        useremail: userEmail,
-        message: custom && custom.message
-      },
-      // The attachments
-      [
-        {
-          filename: 'recovery_' + xpub + '_' + moment().format('YYYYMDHm') + '.json',
-          content: JSON.stringify(recoveryRequest)
-        }
-      ]
-    );
-  };
-
-  var result;
-  return Key.findOneQ({userEmail: userEmail, xpub: xpub})
-  .then(function(key) {
-    if (!key) {
-      // no matching key found, return a fake result to throw spammers off
-      result = {
-        _id: mongoose.Types.ObjectId().toString(),
-        created: new Date()
-      };
-      return result;
-    }
-    recoveryRequest.masterxpub = key.masterxpub;
-    recoveryRequest.chainPath = key.path; // the chain path of this user
-    return Q.all([RecoveryRequest.createQ(recoveryRequest), sendEmailToAdmin(), sendEmailToUser(), notifyEndpoint(key, 'prerecovery')])
-    .spread(function(saveResult, emailToAdminResult, emailToUserResult, notificationResult) {
-      result = saveResult;
-    });
-  })
-  .then(function() {
-    return {
-      id: result._id,
-      created: result.created
-    };
-  });
-};
