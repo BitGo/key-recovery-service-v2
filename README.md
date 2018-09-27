@@ -9,12 +9,12 @@ This project supports the following key schemes:
 This service implements:
 
 1. The key provisioning protocol (endpoint to get keys), provisioning master keys for new customers and deriving wallet-specific subkeys for returning customers.
-2. An email to be sent to users when a key is provisioned, setting up their relationship with the KRS provider. 
+2. An email to be sent to users when a key is provisioned, setting up their relationship with the KRS provider.
 3. An optional custom callback for customers expecting to create a large number of wallets, who may not want their inbox filled up with notifications.
 4. A local admin tool for refilling the pool of available keys and managing customer-specific information.
 5. An offline signing tool to sign recovery requests (in JSON format).
 
-Tests for the service can be run with ``npm test``. 
+Tests for the service can be run with ``npm test``.
 
 Key Server Setup and Deployment
 ====================
@@ -27,15 +27,18 @@ The key server is BitGo's interface to the KRS service. It is responsible for st
     [NodeJS Installation Guide](http://howtonode.org/how-to-install-nodejs)
 2. The KRS server stores public keys in a MongoDB 3 database. Install MongoDB on the same server as the KRS server, or on a separate server on the local network.
 
-    [MongoDB Installation Guide](https://docs.mongodb.com/manual/installation/) 
+    [MongoDB Installation Guide](https://docs.mongodb.com/manual/installation/)
 3. Clone this repository
 4. Run `npm install` in the KRS repository folder to install required libraries for the KRS server.
 5. Configure the KRS service (see Configuration below)
 6. Start the server with `npm start`
-7. The service will be available via `http://localhost:6833/key`
-8. Obtain a key by issuing a curl command like:
+7. The service will be available via `http://localhost:6833/key`. Note that GET requests to this endpoint will not return anything until you obtain a key, using the commands below.
+8. Follow the "Offline Environment SetUp" instructions below to generate a master key.
+9. Obtain a key by issuing a curl command like:
+```
+curl -H "Content-Type: application/json" -d '{ "customerId": "123abc", "coin": "btc", "userEmail": "user@example.com", "custom": { } }' http://localhost:6833/key
+```
 
-`curl -h "Content-Type: application/json" -d "{ "customerId": "123abc", "coin": "btc", "userEmail": "user@example.com", "custom": { } }" http://localhost:6833/key`
 
 Replace `user@example.com` with your email in the above example to receive an email with your backup key.
 
@@ -50,17 +53,17 @@ An offline environment is required for generating master keys, deriving hardened
 5. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to the ``keys.json`` file. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
 
     ``bin/admin.js generate <xprv> xpubs.json --start 0 -n 1000000``
-    
+
 6. Generate a random Stellar HD seed with ``bin/admin.js seed``
 7. Derive a large number of customer-specific public keys. These hardened Stellar keys will be allocated to wallets enrolling with the KRS server.
 
     ``bin/admin.js generate <seed> xlm_keys.json --start 0 -n 1000000 --type xlm``
-    
+
 8. Transfer the xpubs.json and xlm_keys.json files to the online key server via flash drive, SD card, or other physical medium.
 9. Import the public keys to the key server's database with
 
     ``bin/admin.js import xpubs.json``
-    
+
     ``bin/admin.js import xlm_keys.json --type xlm``
 
 Configuration
@@ -95,13 +98,13 @@ In a recovery scenario, the user or BitGo will provide you with a recovery file 
  - The coin to be recovered
  - The backup key associated with the wallet
  - A raw transaction hex with one signature applied
- 
+
 It is your responsibility to verify the identity of the user (verification information can be stored and retrieved with ``bin/admin.js verification``), then co-sign the recovery in an offline environment. After cosigning a recovery, you can transfer the signed transaction hex to an online machine, and broadcast the transaction from any node or public block explorer.
 
 Legal
 ====================
 Copyright 2018 BitGo, Inc.
-Licensed under the Apache License, Version 2.0 (the "License"); 
+Licensed under the Apache License, Version 2.0 (the "License");
 you may not use files in this project except in compliance with the License.
 
 Unless required by applicable law or agreed to in writing, software
