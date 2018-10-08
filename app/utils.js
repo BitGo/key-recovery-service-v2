@@ -94,9 +94,6 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
  * ( note: for xlm: 'neuter' parameter effectively specifies whether to return the public key or the secret
  *  if neuter == true, it returns the xlm public key
  *  if neuter == false, it returns the xlm secret )
- *
- *  @David: do you like returning a string here?
- *  alternatively we could return an Object, something like { pub: <public key>, secret: <secret key> }
  */
 
 exports.deriveChildKey = function(master, derivationPath, type, neuter) {
