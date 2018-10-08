@@ -75,8 +75,49 @@ describe('Offline Admin Tool', function() {
         const M_0 = 'xpub69H7F5d8KSRgmmdJg2KhpAK8SR3DjMwAdkxj3ZuxV27CprR9LgpeyGmXUbC6wb7ERfvrnKZjXoUmmDznezpbZb7ap6r1D3tgFxHmwMkQTPH';
 
         utils.deriveChildKey(MASTER_XPUB, 'm/0', 'xpub').should.equal(M_0);
-      })
+      });
     })
+  });
+
+  describe('Stellar key derivation', function() {
+      // from test 3 at https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
+      const MASTER_SEED = '937ae91f6ab6f12461d9936dfc1375ea5312d097f3f1eb6fed6a82fbe38c85824da8704389831482db0433e5f6c6c9700ff1946aa75ad8cc2654d6e40f567866'
+
+      describe('failure', function() {
+          it('should fail with an invalid master seed', function() {
+              const BAD_SEED = '-thisisabadseed';
+
+              (function() { utils.deriveChildKey(BAD_SEED, "m/148'", 'xlm') }).should.throw(Error);
+          });
+
+          it('should fail with an invalid derivation path', function() {
+              (function() { utils.deriveChildKey(MASTER_SEED, 'derivation path', 'xlm') }).should.throw(Error);
+          });
+      });
+
+      describe('success', function() {
+          // test 3 from https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
+          it("should find m/44'/148'/0' of test vector 3", function() {
+              const pub = 'GC3MMSXBWHL6CPOAVERSJITX7BH76YU252WGLUOM5CJX3E7UCYZBTPJQ';
+              const priv = 'SAEWIVK3VLNEJ3WEJRZXQGDAS5NVG2BYSYDFRSH4GKVTS5RXNVED5AX7';
+
+              const publicKey = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/0'", 'xlm', true);
+              publicKey.should.equal(pub);
+              const secret = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/0'", 'xlm', false);
+              secret.should.equal(priv);
+          });
+
+          // test 3 from https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
+          it("should find m/44'/148'/6' of test vector 3", function() {
+              const pub = 'GCUDW6ZF5SCGCMS3QUTELZ6LSAH6IVVXNRPRLAUNJ2XYLCA7KH7ZCVQS';
+              const priv = 'SBSHUZQNC45IAIRSAHMWJEJ35RY7YNW6SMOEBZHTMMG64NKV7Y52ZEO2';
+
+              const publicKey = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/6'", 'xlm', true);
+              publicKey.should.equal(pub);
+              const secret = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/6'", 'xlm', false);
+              secret.should.equal(priv);
+          });
+      })
   });
 
   describe('Verification', function() {
