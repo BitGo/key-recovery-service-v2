@@ -60,16 +60,11 @@ const sendDatabaseLowWarning = co(function *(availableKeys, type) {
 const provisionMasterKey = co(function *(coin, customerId) {
   const keyType = process.config.supportedcoins[coin];
 
-  const key = yield MasterKey.findOne({ coin: null, customerId: null, type: keyType });
+  const key = yield MasterKey.findOneAndUpdate({ coin: null, customerId: null, type: keyType }, { coin: coin, customerId: customerId, type: keyType });
 
   if (!key) {
     throw utils.ErrorResponse(500, `no available ${keyType} keys`);
   }
-
-  key.coin = coin;
-  key.customerId = customerId;
-
-  yield key.save();
 
   const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: keyType });
 
