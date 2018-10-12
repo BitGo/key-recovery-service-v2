@@ -20,6 +20,9 @@ describe('Application Server', function() {
 
     masterKey.save();
     xlmKey.save();
+
+    const masterKey2 = new MasterKey({ pub: 'xpubTHISISAFAKEXPUBTHISISAFAKEXPUBTHISISAFAKEXPUBTHISISAFAKEXPUBTHISISAFAKEXPUBTHISISAFAKEXPUBTHISISAFAKEXPUB', path: 'm/1\'', keyCount: 0, type: 'xpub' });
+    masterKey2.save();
   });
 
   after(function() {
@@ -101,6 +104,7 @@ describe('Application Server', function() {
         .end(function (err, res) {
           res.status.should.eql(200);
           should.exist(res.body.path);
+            res.body.path.should.equal('0');
           should.exist(res.body.masterKey);
           res.body.masterKey.substr(0, 4).should.equal('xpub');
           should.exist(res.body.pub);
@@ -111,6 +115,64 @@ describe('Application Server', function() {
           res.body.custom.anyCustomField.should.equal('hello world');
         });
     });
+
+    // Note: this test depends on the previous test to have been run before it
+    it('should return a new key from the same master xpub as before, with the path incremented by 1', function () {
+      process.config.reuseMasterKeys = true;
+      agent
+          .post('/key')
+          .send({
+              customerId: 'enterprise-id',
+              coin: 'btc',
+              userEmail: 'test@example.com',
+              custom: {
+                  'anyCustomField': 'hello world'
+              }
+          })
+          .end(function (err, res) {
+              res.status.should.eql(200);
+              should.exist(res.body.path);
+              res.body.path.should.equal('1');
+              should.exist(res.body.masterKey);
+              res.body.masterKey.substr(0, 4).should.equal('xpub');
+              should.exist(res.body.pub);
+              res.body.pub.substr(0, 4).should.equal('xpub');
+              res.body.userEmail.should.equal('test@example.com');
+              should.exist(res.body.custom);
+              should.exist(res.body.custom.anyCustomField);
+              res.body.custom.anyCustomField.should.equal('hello world');
+          });
+    });
+
+    // Note: this test depends on the previous test to have been run before it
+    it('should return a new key with a new master xpub', function () {
+          process.config.reuseMasterKeys = false;
+          agent
+              .post('/key')
+              .send({
+                  customerId: 'enterprise-id',
+                  coin: 'btc',
+                  userEmail: 'test@example.com',
+                  custom: {
+                      'anyCustomField': 'hello world'
+                  }
+              })
+              .end(function (err, res) {
+                  res.status.should.eql(200);
+                  should.exist(res.body.path);
+                  // the path will be 0 if it is a new xpub
+                  res.body.path.should.equal('0');
+                  should.exist(res.body.masterKey);
+                  res.body.masterKey.substr(0, 4).should.equal('xpub');
+                  should.exist(res.body.pub);
+                  res.body.pub.substr(0, 4).should.equal('xpub');
+                  res.body.userEmail.should.equal('test@example.com');
+                  should.exist(res.body.custom);
+                  should.exist(res.body.custom.anyCustomField);
+                  res.body.custom.anyCustomField.should.equal('hello world');
+              });
+    });
+
 
     it('should return a new XLM key', function() {
       agent
