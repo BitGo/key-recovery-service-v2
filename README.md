@@ -43,25 +43,26 @@ Offline Environment Setup
 ====================
 An offline environment is required for generating master keys, deriving hardened customer keys, and signing recovery transactions.
 
-1. Install [BitGo CLI](https://github.com/BitGo/bitgo-cli) and the KRSv2 admin tool (``bin/admin.js``) on the offline environment
-2. Generate a random BIP32 key pair with ``bitgo newkey``.
-3. Shard the key with [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing) with the ``bitgo splitkeys`` command.
-4. The key shards of the master private key **must** be stored securely. At a minimum, BitGo requires KRS operators to store keys with an industry-approved encryption standard such as AES-256. The encryption password **must** contain at least 16 characters, including uppercase and lowercase letters, numbers, and symbols.
-5. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to the ``keys.json`` file. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
+1. Install the KRSv2 admin tool (``bin/admin.js``) on the offline environment
+2. Generate a random BIP32 master key pair with ``bin/admin.js initkey masterkey``. This key will be sharded with [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing).
+The key shards of the master private key **must** be stored securely. At a minimum, BitGo requires KRS operators to store keys with an industry-approved encryption standard such as AES-256. The encryption passwords **must** contain at least 16 characters, including uppercase and lowercase letters, numbers, and symbols.
+Follow the commands to generate these passwords, and the encrypted sharded key will be stored in a file called ``masterkey.json``. Remember the passwords you use here. You will need them for all recovery signings.
+3. Generate a random Stellar HD seed with ``bin/admin.js initkey xlmkey --type xlm``. This will be stored in a non-encrypted file called ``xlmkey.json``
+4. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to a file called ``xpubs.json``. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
 
-    ``bin/admin.js generate <xprv> xpubs.json --start 0 -n 1000000``
+    ``bin/admin.js generate masterkey.json xpubs --start 0 -n 1000000``
     
-6. Generate a random Stellar HD seed with ``bin/admin.js seed``
-7. Derive a large number of customer-specific public keys. These hardened Stellar keys will be allocated to wallets enrolling with the KRS server.
 
-    ``bin/admin.js generate <seed> xlm_keys.json --start 0 -n 1000000 --type xlm``
+5. Derive a large number of customer-specific xlm public keys. These hardened Stellar keys will be allocated to wallets enrolling with the KRS server.
+
+    ``bin/admin.js generate xlmkey.json xlm_pubs --start 0 -n 1000000 --type xlm``
     
-8. Transfer the xpubs.json and xlm_keys.json files to the online key server via flash drive, SD card, or other physical medium.
-9. Import the public keys to the key server's database with
+6. Transfer the xpubs.json and xlm_pubs.json files to the online key server via flash drive, SD card, or other physical medium.
+7. Import the public keys to the key server's database with
 
     ``bin/admin.js import xpubs.json``
     
-    ``bin/admin.js import xlm_keys.json --type xlm``
+    ``bin/admin.js import xlm_pubs.json --type xlm``
 
 Configuration
 ====================
@@ -80,15 +81,18 @@ The offline signing tool can be accessed with:
 ``bin/admin.js sign``
 
 ```
-usage: admin.js sign [-h] [--key KEY] [--confirm] file
+usage: admin.js sign [-h] [--keyfile KEYFILE] [--path PATH] [--type TYPE] [--key KEY] [--confirm] recoveryfile
 
 Positional arguments:
-  file        path to the recovery request JSON file
+  recoveryfile        path to the recovery request JSON file
 
 Optional arguments:
   -h, --help  Show this help message and exit.
-  --key KEY   private key to sign the transaction with (optional - will be prompted for if not specified here)
-  --confirm   will not ask for confirmation before signing (be careful!)
+  --keyfile KEYFILE a master key file (one that was originally generated with "initkey") to be used for signing
+  --path PATH       the derivation path from the master key that is relevant to this specific recovery
+  --type TYPE       set type to 'xlm' if signing an xlm transaction. default is 'xprv'
+  --key KEY         private key to sign the transaction with (this should not be used for production signings, and is more for testing purposes)
+  --confirm         will not ask for confirmation before signing (be careful!)
 ```
 
 In a recovery scenario, the user or BitGo will provide you with a recovery file containing:

@@ -277,7 +277,7 @@ const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
 };
 
 const handleSign = function(args) {
-  const file = args.file;
+  const file = args.recoveryfile;
   const key = args.key;
 
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
