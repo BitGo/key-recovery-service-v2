@@ -10,6 +10,7 @@ const MasterKey = require('../app/models/masterkey');
 
 describe('Application Server', function() {
   let agent;
+  let defaultReuseConfig = process.config.reuseMasterKeys;
   before(function () {
     testutils.mongoose.connection.dropDatabase();
     agent = request.agent(server);
@@ -27,6 +28,7 @@ describe('Application Server', function() {
 
   after(function() {
     testutils.mongoose.connection.close();
+    process.config.reuseMasterKeys = defaultReuseConfig;
   });
 
   describe('GET /', function() {
@@ -90,7 +92,29 @@ describe('Application Server', function() {
         });
     });
 
-    it('should return a new key', function () {
+    it('should return a new XLM key', function() {
+      agent
+          .post('/key')
+          .send({
+              customerId: 'enterprise-id',
+              coin: 'xlm',
+              userEmail: 'test@example.com',
+              custom: {
+                  anyCustomField: 'hello XLM'
+              }
+          })
+          .end(function (err, res) {
+              res.status.should.equal(200);
+              should.exist(res.body.pub);
+              res.body.pub.should.equal('GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7');
+              res.body.userEmail.should.equal('test@example.com');
+              should.exist(res.body.custom);
+              should.exist(res.body.custom.anyCustomField);
+              res.body.custom.anyCustomField.should.equal('hello XLM');
+          })
+    });
+
+    it('should return a new key', co(function *() {
       agent
         .post('/key')
         .send({
@@ -114,11 +138,11 @@ describe('Application Server', function() {
           should.exist(res.body.custom.anyCustomField);
           res.body.custom.anyCustomField.should.equal('hello world');
         });
-    });
+    }));
 
     // Note: this test depends on the previous test to have been run before it
-    it('should return a new key from the same master xpub as before, with the path incremented by 1', function () {
-      process.config.reuseMasterKeys = true;
+    it('should return a new key from the same master xpub as before, with the path incremented by 1', co(function *() {
+      console.log('\n\nbeginning test 2\n\nn');
       agent
           .post('/key')
           .send({
@@ -142,11 +166,13 @@ describe('Application Server', function() {
               should.exist(res.body.custom.anyCustomField);
               res.body.custom.anyCustomField.should.equal('hello world');
           });
-    });
+    }));
+
 
     // Note: this test depends on the previous test to have been run before it
-    it('should return a new key with a new master xpub', function () {
-          process.config.reuseMasterKeys = false;
+    it('should return a new key with a new master xpub', co(function *() {
+        //process.config.reuseMasterKeys = false;
+        console.log('\n\nbeginning test 3\n\nn');
           agent
               .post('/key')
               .send({
@@ -170,30 +196,11 @@ describe('Application Server', function() {
                   should.exist(res.body.custom);
                   should.exist(res.body.custom.anyCustomField);
                   res.body.custom.anyCustomField.should.equal('hello world');
+                  process.config.reuseMasterKeys = defaultReuseConfig;
               });
-    });
+    }));
 
 
-    it('should return a new XLM key', function() {
-      agent
-        .post('/key')
-        .send({
-          customerId: 'enterprise-id',
-          coin: 'xlm',
-          userEmail: 'test@example.com',
-          custom: {
-            anyCustomField: 'hello XLM'
-          }
-        })
-        .end(function (err, res) {
-          res.status.should.equal(200);
-          should.exist(res.body.pub);
-          res.body.pub.should.equal('GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7');
-          res.body.userEmail.should.equal('test@example.com');
-          should.exist(res.body.custom);
-          should.exist(res.body.custom.anyCustomField);
-          res.body.custom.anyCustomField.should.equal('hello XLM');
-        })
-    })
+
   });
 });
