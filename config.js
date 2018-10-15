@@ -41,5 +41,6 @@ module.exports = {
     }
   },
   "lowKeyWarningLevels": [10000, 5000, 1000, 500, 100, 0],
-  "reuseMasterKeys":true
+  "reuseMasterKeys":false // if true this will derive a new xpub from the same hardened master key for a given customer/coin combo
+    // set to false if you want to be able to send a user their private key when they need a recovery
 };
