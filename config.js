@@ -1,6 +1,6 @@
 module.exports = {
-  "name": "Friendly Key Backup Service",
-  "serviceurl": "http://keyrecoveryservice.yourdomain.com/",
+  "name": "BitGo Key Recovery Service",
+  "serviceurl": "www.bitgo.com/",
   "supportedcoins": {
     btc: 'xpub',
     tbtc: 'xpub',
@@ -19,14 +19,14 @@ module.exports = {
   },
   "host": "0.0.0.0",
   "port": 6833,
-  "adminemail": "davidcruz@bitgo.com",
-  "mongouri": "mongodb://localhost:27017/key-recovery-service",
+  "adminemail": "danny@bitgo.com",
+  "mongouri": process.env.KRSV2_DBURL,
   "provider": {
     "id": "bitgo",
     "secret": "youshouldchangethis"
   },
   "mail": {
-    "fromemail": "KRS.XYZ <krs@example.com>",
+    "fromemail": "BitGo Key Recovery Service <no-reply@bitgo.com>",
     "host": "smtp.mailgun.org",
     "port": 587,
     "auth": {
