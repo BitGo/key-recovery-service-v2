@@ -59,7 +59,6 @@ const sendDatabaseLowWarning = co(function *(availableKeys, type) {
  */
 const provisionMasterKey = co(function *(coin, customerId) {
   const keyType = process.config.supportedcoins[coin];
-  console.log('\n\n\nprovisioning master key ' + keyType + '\n\n\n');
   const key = yield MasterKey.findOne({ coin: null, customerId: null, type: keyType });
 
   if (!key) {
@@ -137,8 +136,6 @@ exports.provisionKey = co(function *(req) {
   }
 
   let masterKey;
-
-  console.log('\n\nabout to provision: ' + coin + '\n\n')
 
   if (process.config.supportedcoins[coin] === 'xlm') {
     // ALWAYS provision a new master key for Stellar wallets, and use the master key as the wallet key
