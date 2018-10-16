@@ -176,7 +176,7 @@ generateFromShards.addArgument(
     {
         action: 'store',
         help: 'the name of the file that contains encrypted shards of a private key. this should be a json file in the' +
-            'format that is output by "initkey"'
+            'format that is output by "newkey"'
     }
 );
 
@@ -209,7 +209,7 @@ generateFromShards.addArgument(
 const createSeed = subparsers.addParser('seed', {
   addHelp: true,
   description: 'Generates a cryptographically secure random seed to be used for Stellar key derivation.\n' +
-    'Note: To generate a master key for non-Stellar coins, please use "initkey"'
+    'Note: To generate a master key for non-Stellar coins, please use "newkey"'
 });
 
 createSeed.addArgument(
@@ -220,12 +220,12 @@ createSeed.addArgument(
     }
 );
 
-const initKey = subparsers.addParser('initkey', {
+const newKey = subparsers.addParser('newkey', {
     addHelp: true,
     description: "Generates a master key, splits it into encrypted shards, and stores it as a file"
 });
 
-initKey.addArgument(
+newKey.addArgument(
     [ 'outputfile' ],
     {
         action: 'store',
@@ -233,7 +233,7 @@ initKey.addArgument(
     }
 );
 
-initKey.addArgument(
+newKey.addArgument(
     ['--type'],
     {
         action: 'store',
@@ -244,14 +244,14 @@ initKey.addArgument(
 
 const recoverKeys = subparsers.addParser('recover', {
     addHelp: true,
-    description: "Recover a key from an encrypted shares .json file (one that was generated from 'initkey'). WARNING!!!! THIS WILL PRINT A PRIVATE KEY TO THE CONSOLE!!!"
+    description: "Recover a key from an encrypted shares .json file (one that was generated from 'newkey'). WARNING!!!! THIS WILL PRINT A PRIVATE KEY TO THE CONSOLE!!!"
 });
 recoverKeys.addArgument(
     ['inputfile'],
     {
         action: 'store',
         help: 'the name of the file that contains encrypted shares of a private key. this should be a json file in the' +
-            'format that is output by "initkey"'
+            'format that is output by "newkey"'
     }
 );
 recoverKeys.addArgument(['-v', '--verifyonly'], { action: 'storeConst', constant: 'true', help: 'verify only (do not show xprvs)' });
@@ -493,7 +493,7 @@ const assertFileDoesNotExist = function(filename) {
 }
 
 
-const handleInitKey = co(function *(args) {
+const handleNewKey = co(function *(args) {
     if(args.type === 'xlm') {
         handleGenerateHDSeed(args);
     } else {
@@ -580,8 +580,8 @@ const handleRecoverKeys = co(function *(args) {
 
 
 /**
- * Decrypt a key from the JSON file produced by initkey
- * Note: by default, initkey only produces one key, so this will usually recover a list containing 1 key.
+ * Decrypt a key from the JSON file produced by newkey
+ * Note: by default, newkey only produces one key, so this will usually recover a list containing 1 key.
  *
  * This code has been refactored from a function that orignally decrypted a file containing multiple keys
  *
@@ -776,8 +776,8 @@ const run = co(function *(testArgs) {
     case 'verification':
       yield handleVerification(args);
       break;
-    case 'initkey':
-      yield handleInitKey(args);
+    case 'newkey':
+      yield handleNewKey(args);
       break;
     case 'recover':
       yield handleRecoverKeys(args);

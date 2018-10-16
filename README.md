@@ -44,10 +44,10 @@ Offline Environment Setup
 An offline environment is required for generating master keys, deriving hardened customer keys, and signing recovery transactions.
 
 1. Install the KRSv2 admin tool (``bin/admin.js``) on the offline environment
-2. Generate a random BIP32 master key pair with ``bin/admin.js initkey masterkey``. This key will be sharded with [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing).
+2. Generate a random BIP32 master key pair with ``bin/admin.js newkey masterkey``. This key will be sharded with [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing).
 The key shards of the master private key **must** be stored securely. At a minimum, BitGo requires KRS operators to store keys with an industry-approved encryption standard such as AES-256. The encryption passwords **must** contain at least 16 characters, including uppercase and lowercase letters, numbers, and symbols.
 Follow the commands to generate these passwords, and the encrypted sharded key will be stored in a file called ``masterkey.json``. Remember the passwords you use here. You will need them for all recovery signings.
-3. Generate a random Stellar HD seed with ``bin/admin.js initkey xlmkey --type xlm``. This will be stored in a non-encrypted file called ``xlmkey.json``
+3. Generate a random Stellar HD seed with ``bin/admin.js newkey xlmkey --type xlm``. This will be stored in a non-encrypted file called ``xlmkey.json``
 4. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to a file called ``xpubs.json``. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
 
     ``bin/admin.js generate masterkey.json xpubs -n 1000000``
