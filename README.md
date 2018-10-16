@@ -50,12 +50,12 @@ Follow the commands to generate these passwords, and the encrypted sharded key w
 3. Generate a random Stellar HD seed with ``bin/admin.js initkey xlmkey --type xlm``. This will be stored in a non-encrypted file called ``xlmkey.json``
 4. Derive a large number of customer-specific public keys. These hardened BIP32 child keys will be allocated to new customers enrolling with the KRS server, or for returning customers enrolling for new coins. These keys will be saved to a file called ``xpubs.json``. It is recommended to generate a large number of keys so that the master private key does not need to be exposed often.
 
-    ``bin/admin.js generate masterkey.json xpubs --start 0 -n 1000000``
+    ``bin/admin.js generate masterkey.json xpubs -n 1000000``
     
 
 5. Derive a large number of customer-specific xlm public keys. These hardened Stellar keys will be allocated to wallets enrolling with the KRS server.
 
-    ``bin/admin.js generate xlmkey.json xlm_pubs --start 0 -n 1000000 --type xlm``
+    ``bin/admin.js generate xlmkey.json xlm_pubs -n 1000000 --type xlm``
     
 6. Transfer the xpubs.json and xlm_pubs.json files to the online key server via flash drive, SD card, or other physical medium.
 7. Import the public keys to the key server's database with
@@ -88,11 +88,6 @@ Positional arguments:
 
 Optional arguments:
   -h, --help  Show this help message and exit.
-  --keyfile KEYFILE a master key file (one that was originally generated with "initkey") to be used for signing
-  --path PATH       the derivation path from the master key that is relevant to this specific recovery
-  --type TYPE       set type to 'xlm' if signing an xlm transaction. default is 'xprv'
-  --key KEY         private key to sign the transaction with (this should not be used for production signings, and is more for testing purposes)
-  --confirm         will not ask for confirmation before signing (be careful!)
 ```
 
 In a recovery scenario, the user or BitGo will provide you with a recovery file containing:

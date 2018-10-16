@@ -12,8 +12,7 @@ const readline = require('readline');
 const read = require('read');
 const sjcl = require('sjcl');
 const secrets = require('secrets.js-grempe');
-const bitgo = require('bitgo');
-const bitcoin = bitgo.bitcoin;
+const bitcoin = require('bitgo-utxo-lib');
 const db = require('./db.js');
 const MasterKey = require('./models/masterkey.js');
 const signingTool = require('./sign.js');
@@ -137,7 +136,7 @@ generateKeysCommand.addArgument(
   }
 );
 generateKeysCommand.addArgument(
-  ['outputprefix'],
+  ['outputfile'],
   {
     action: 'store',
     help: 'prefix of a new .json file to save the generated private keys to'
@@ -182,7 +181,7 @@ generateFromShards.addArgument(
 );
 
 generateFromShards.addArgument(
-    ['outputprefix'],
+    ['outputfile'],
     {
         action: 'store',
         help: 'prefix of a new .json output file to save generated private keys to'
@@ -214,7 +213,7 @@ const createSeed = subparsers.addParser('seed', {
 });
 
 createSeed.addArgument(
-    ['outputprefix'],
+    ['outputfile'],
     {
         action: 'store',
         help: 'prefix of the .json output file to store the newly generated seed'
@@ -227,7 +226,7 @@ const initKey = subparsers.addParser('initkey', {
 });
 
 initKey.addArgument(
-    [ 'outputprefix' ],
+    [ 'outputfile' ],
     {
         action: 'store',
         help: 'prefix of the .json output file to store the newly generated encrypted key shards'
@@ -370,7 +369,7 @@ const handleGenerateKeys = function(args) {
 }
 
 const handleGenerateXLMKeys = function(args) {
-    assertFileDoesNotExist(args.outputprefix + '.json');
+    assertFileDoesNotExist(args.outputfile);
     args.master = getSeedFromXLMFile(args.inputfile);
     generatePubKeys(args);
 }
@@ -391,7 +390,7 @@ const getSeedFromXLMFile = function(filename) {
  * args.start (the path index to start generating keys at)
  * args.master (the master private key from which all hardened keys will be derived)
  * args.type (should be either xprv or xlm)
- * args.outputprefix (the prefix of the .json file name that will be created)
+ * args.outputfile (the prefix of the .json file name that will be created)
  */
 const generatePubKeys = function(args) {
   const keys = [];
@@ -407,7 +406,7 @@ const generatePubKeys = function(args) {
     keys.push(key);
   }
 
-  const output = args.outputprefix + '.json';
+  const output = args.outputfile;
 
   console.log(`Keys generated, saving to ${output}`);
   fs.writeFileSync(output, JSON.stringify(keys, null, 2));
@@ -419,7 +418,7 @@ const generatePubKeys = function(args) {
 const handleGenerateHDSeed = function(args) {
   const XLM_SEED_LENGTH = 64;
   const seed = crypto.randomBytes(XLM_SEED_LENGTH).toString('hex');
-  let filename = args.outputprefix + '.json';
+  let filename = args.outputfile;
   const seedJson = { seed: seed };
 
   assertFileDoesNotExist(filename);
@@ -513,7 +512,7 @@ const handleInitKey = co(function *(args) {
 const handleInitShardedKey = function(args) {
     const self = this;
     const input = new utils.UserInput(args);
-    const filename = input.outputprefix + '.json';
+    const filename = input.outputfile;
     assertFileDoesNotExist(filename);
     const getPassword = function(i, n) {
         if (i === n) {
@@ -754,6 +753,9 @@ const handleSignPrep = co(function *(args) {
 
 const run = co(function *(testArgs) {
   const args = parser.parseArgs(testArgs);
+  if(args.outputfile) {
+      args.outputfile = makeItJSON(outputfile);
+  }
   switch (args.cmd) {
     case 'import':
       yield handleImportKeys(args);
@@ -788,6 +790,17 @@ const run = co(function *(testArgs) {
   db.connection.close();
 });
 
+/**
+ * Takes in a filename.
+ * If it is a .json file, just returns the file
+ * If it does not end with .json, it appends .json to the end of the filename and returns it
+ */
+const makeItJSON = function(filename) {
+    if(!filename.endsWith('.json')) {
+        return filename + '.json';
+    }
+    return filename;
+}
 
 
 // For admin script and unit testing of functions

@@ -11,8 +11,7 @@ const sjcl = require('sjcl');
 const read = require('read');
 const secrets = require('secrets.js-grempe');
 const crypto = require('crypto');
-const bitgo = require('bitgo');
-const bitcoin = bitgo.bitcoin;
+const bitcoin = require('bitgo-utxo-lib');
 
 
 const rippleParse = require('ripple-binary-codec');
