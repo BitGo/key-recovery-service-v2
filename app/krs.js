@@ -154,7 +154,8 @@ exports.provisionKey = co(function *(req) {
 
   yield masterKey.update({ $inc: { keyCount: 1 } });
 
-  if (!req.body.disableKRSEmail) {
+  //if (!req.body.disableKRSEmail) {
+  if(false) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
