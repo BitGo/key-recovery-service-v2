@@ -327,14 +327,24 @@ exports.addUserEntropy = function(userString) {
  * @param   {Number} index   the index of the key in the batch
  * @returns {Object}         information about the key
  */
-exports.genSplitKey = function(params, reshardSeed) {
+exports.genSplitKey = function(params, reshardSeed, type) {
     const self = this;
-    const key = exports.genKey(reshardSeed);
-    const result = {
-        xpub: key.xpub,
+    let key;
+    if(reshardSeed && type === 'xlm') {
+        key = {seed: reshardSeed};
+    } else {
+        key = exports.genKey(reshardSeed, type);
+    }
+
+    // result will look different for xlm vs xpub
+    let result = {
         m: params.m,
         n: params.n
     };
+    if(type !== 'xlm') {
+       result.xpub = key.xpub;
+    }
+
 
     // If n==1, we're not splitting, just encrypt
     let shares;
@@ -361,23 +371,53 @@ exports.genSplitKey = function(params, reshardSeed) {
     return result;
 };
 
-exports.genKey = function(reshardSeed) {
+/**
+ This function generates a new master seed/key
+ if reshardSeed is not false, then we're just
+ */
+exports.genKey = function(reshardSeed, type) {
     exports.addEntropy(128);
-    const seedLength = 256 / 32; // 256 bits / 32-bit words
-    let seed;
+    let seed, returnKey;
+
+    // XLM has a different type of seed, and no xpub or xprv, so we handle it with a special case
+
     if(reshardSeed) {
         seed = reshardSeed;
     } else {
-        seed = sjcl.codec.hex.fromBits(sjcl.random.randomWords(seedLength));
+        if(type === 'xlm') {
+            returnKey = exports.handleGenerateHDSeed();
+            return returnKey;
+        } else {
+            seed = sjcl.codec.hex.fromBits(sjcl.random.randomWords(seedLength));
+        }
     }
+
+    // If we get to here, the type is not XLM, so we treat it like a normal xpub/xprv
+
     const extendedKey = bitcoin.HDNode.fromSeedHex(seed);
-    const returnKey = {
+    returnKey = {
         seed: seed,
         xpub: extendedKey.neutered().toBase58(),
         xprv: extendedKey.toBase58()
     };
+
     return returnKey;
 };
+
+/**
+ * This function is only used to generate an XLM seed right now
+ */
+exports.handleGenerateHDSeed = function() {
+    /*
+  let filename = prompt('Enter output filename: ');
+  assertFileDoesNotExist(filename);
+*/
+    const XLM_SEED_LENGTH = 64;
+    const seed = crypto.randomBytes(XLM_SEED_LENGTH).toString('hex');
+    // let filename = args.outputfile;
+    return {seed: seed};
+}
+
 
 /**
  * Add n bytes of entropy to the SJCL entropy pool from secure crypto

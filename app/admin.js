@@ -129,15 +129,7 @@ setVerificationCommand.addArgument(
 );
 
 const generateKeysCommand = subparsers.addParser('generate', { addHelp: true });
-/*
-generateKeysCommand.addArgument(
-  ['inputfile'],
-  {
-    action: 'store',
-    help: 'file containing the master seed to derive hardened child keys from'
-  }
-);
-*/
+
 generateKeysCommand.addArgument(
   ['outputfile'],
   {
@@ -324,11 +316,7 @@ const handleDeriveKey = function(args) {
 };
 
 const handleGenerateKeys = function(args) {
-    if(args.type == 'xlm') {
-        handleGenerateXLMKeys(args);
-    } else {
-        handleGenerateFromShards(args);
-    }
+    handleGenerateFromShards(args);
 }
 
 const handleGenerateXLMKeys = function(args) {
@@ -373,25 +361,7 @@ const generatePubKeys = function(args) {
 
   console.log(`Keys generated, saving to ${output}`);
   fs.writeFileSync(output, JSON.stringify(keys, null, 2));
-};
 
-/**
- * This function is only used to generate an XLM seed right now
- */
-const handleGenerateHDSeed = function(args) {
-  let filename = prompt('Enter output filename: ');
-  assertFileDoesNotExist(filename);
-
-  const XLM_SEED_LENGTH = 64;
-  const seed = crypto.randomBytes(XLM_SEED_LENGTH).toString('hex');
-  // let filename = args.outputfile;
-  const seedJson = { seed: seed };
-
-
-
-
-  fs.writeFileSync(filename, JSON.stringify(seedJson, null, 2));
-  console.log("\nGenerated a random seed and stored in the file: " + filename + "\n");
 };
 
 const handleVerificationGet = co(function *(args) {
@@ -462,11 +432,12 @@ const assertFileDoesNotExist = function(filename) {
 
 
 const handleNewKey = co(function *(args) {
+    /*
     if(args.type === 'xlm') {
         handleGenerateHDSeed(args);
-    } else {
-        yield handleInitShardedKey(args, false);
-    }
+    } else {*/
+    yield handleInitShardedKey(args, false);
+    //}
 });
 
 
@@ -523,17 +494,21 @@ const handleInitShardedKey = function(args, reshardSeed) {
         })
         .then(function() {
             const keys = _.range(0, 1).map(function(index) {
-                const key = utils.genSplitKey(input, reshardSeed);
+                const key = utils.genSplitKey(input, reshardSeed, args.type);
                 if (index % 10 === 0) {
                     console.log('Generating key ' + index);
                 }
-                return {
+                // Here, XLM and xpub types will have different styles
+                const result = {
                     index: index,
-                    xpub: key.xpub,
                     m: key.m,
                     n: key.n,
                     seedShares: key.seedShares
                 };
+                if(args.type !== 'xlm') {
+                    result.xpub = key.xpub;
+                }
+                return result;
             });
 
             // Instead of writing file here, prompt each user for passphrase one by one
@@ -551,11 +526,16 @@ const handleInitShardedKey = function(args, reshardSeed) {
                     try {
                         assertFileDoesNotExist(outFile);
                         console.log(outFile + '\n\n');
+                        // file contents
                         const fileContents = {
                             m: keys[0].m,
                             n: keys[0].n,
-                            xpub: keys[0].xpub,
-                            xprv: keys[0].seedShares[shareIndex]
+                        }
+                        if(args.type === 'xlm') {
+                            fileContents.seed = keys[0].seedShares[shareIndex];
+                        } else {
+                            fileContents.xpub = keys[0].xpub;
+                            fileContents.xprv = keys[0].seedShares[shareIndex];
                         }
                         try {
                             fs.writeFileSync(outFile, JSON.stringify(fileContents, null, 2));
@@ -602,8 +582,12 @@ const handleGenerateFromShards = co(function *(args) {
     // must decrypt the file using handleRecoverKeys and a callback
     const afterDecryption = function(keys) {
         console.log('\nKeys successfully decrypted, now we will generate ' + args.n + ' hardened public keys.\n\n');
-        args.master = keys[0].xprv;
-        args.type = 'xprv';
+        if(args.type === 'xlm') {
+            args.master = keys[0].seed;
+        } else {
+            args.type = 'xprv';
+            args.master = keys[0].xprv;
+        }
         generatePubKeys(args);
     };
     yield decryptShards.decryptShardedKey(args, afterDecryption);

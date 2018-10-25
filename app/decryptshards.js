@@ -83,7 +83,7 @@ exports.decryptShardedKey = function(args, onFinish) {
             // const json = fs.readFileSync(input.inputfile)
             // const keys = JSON.parse(json);
 
-            const keys = uploadKeyShares(false);
+            const keys = uploadKeyShares(false, args.type);
 
             // Determine and validate the indices of the keys to recover
             let indices = input.keys.split(',')
@@ -124,18 +124,29 @@ exports.decryptShardedKey = function(args, onFinish) {
                 } else {
                     seed = secrets.combine(shares);
                 }
-                const extendedKey = bitcoin.HDNode.fromSeedHex(seed);
-                const xpub = extendedKey.neutered().toBase58();
-                const xprv = args.verifyonly ? undefined : extendedKey.toBase58();
-                if (!args.verifyonly && xpub !== key.xpub) {
-                    throw new Error("xpubs don't match for key " + key.index);
+
+                // here handle xlm differently
+
+                if(args.type === 'xlm') {
+
+                    return {seed: seed};
+
+                } else {
+                    const extendedKey = bitcoin.HDNode.fromSeedHex(seed);
+                    const xpub = extendedKey.neutered().toBase58();
+                    const xprv = args.verifyonly ? undefined : extendedKey.toBase58();
+                    if (!args.verifyonly && xpub !== key.xpub) {
+                        throw new Error("xpubs don't match for key " + key.index);
+                    }
+                    return {
+                        index: key.index,
+                        xpub: xpub,
+                        xprv: xprv,
+                        seed: seed
+                    };
                 }
-                return {
-                    index: key.index,
-                    xpub: xpub,
-                    xprv: xprv,
-                    seed: seed
-                };
+
+
             });
             if(onFinish) {
                 onFinish(recoveredKeys);
@@ -150,7 +161,7 @@ exports.decryptShardedKey = function(args, onFinish) {
  *
  * returns a list containing 1 json object
  */
-const uploadKeyShares = function(all) {
+const uploadKeyShares = function(all, type) {
     console.log("\nIt is now time to upload the key shares you wish to use.\n");
     const currentPrvs= [];
     let m = null;
@@ -165,15 +176,20 @@ const uploadKeyShares = function(all) {
             // Enforce file contents are correct
             if(!json.m) throw new Error('File does not contain the required field: m');
             if(!json.n) throw new Error('File does not contain the required field: n');
-            if(!json.xpub) throw new Error('File does not contain the required field: xpub');
-            if(!json.xprv) throw new Error('File does not contain the required field: xprv');
+
+            if(type === 'xlm') {
+                if(!json.seed) throw new Error('File does not contain the required field: seed');
+            } else {
+                if (!json.xpub) throw new Error('File does not contain the required field: xpub');
+                if (!json.xprv) throw new Error('File does not contain the required field: xprv');
+            }
 
 
             // Sanity check that share matches previous shares uploaded just now
             if(m) {
                 if (json.m !== m) throw new Error('m does not match previous share');
                 if(json.n !== n) throw new Error('n does not match previous share');
-                if(json.xpub !== xpub) throw new Error('xpub does not match previous share');
+                if(type !== 'xlm' && json.xpub !== xpub) throw new Error('xpub does not match previous share');
             } else {
                 m = json.m;
                 n = json.n;
@@ -181,9 +197,11 @@ const uploadKeyShares = function(all) {
             }
 
             // Make sure not uploading a duplicate share
-            if(currentPrvs.includes(json.xprv)) throw new Error('tried to upload a duplicate share');
+            if(type !== 'xlm' && currentPrvs.includes(json.xprv)) throw new Error('tried to upload a duplicate share');
+            if(type === 'xlm' && currentPrvs.includes(json.seed)) throw new Error('tried to upload a duplicate share');
 
-            currentPrvs.push(json.xprv);
+            if(type !== 'xlm') currentPrvs.push(json.xprv);
+            else currentPrvs.push(json.seed);
 
             console.log('\nSuccessfully uploaded ' + inputfile + '\n');
 
@@ -199,11 +217,12 @@ const uploadKeyShares = function(all) {
     }
 
     // Now construct and return the json with all the shares
-    return [{
+    const returnArr = [{
         index: 0,
-        xpub: xpub,
         m: m,
         n: n,
         seedShares:currentPrvs
-    }]
+    }];
+    if(type !== 'xlm') returnArr[0].xpub = xpub;
+    return returnArr;
 }
