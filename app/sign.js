@@ -3,7 +3,7 @@ const prova = require('prova-lib');
 const fs = require('fs');
 const _ = require('lodash');
 const BN = require('bignumber.js');
-const prompt = require('prompt-sync')();
+const prompt = require('prompt-sync')({sigint: true, history: require('prompt-sync-history')()});
 const utils = require('./utils');
 
 const utxoNetworks = {
@@ -139,10 +139,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   const EthTx = require('ethereumjs-tx');
-
   const transaction = new EthTx(recoveryRequest.tx);
   const decimals = coinDecimals[recoveryRequest.coin];
-
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
   const txData = transaction.data;
   const outputs = [{

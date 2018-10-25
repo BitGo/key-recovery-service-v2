@@ -8,6 +8,8 @@ const secrets = require('secrets.js-grempe');
 const utils = require('./utils');
 const sjcl = require('sjcl');
 const bitcoin = require('bitgo-utxo-lib');
+const prompt = require('prompt-sync')({sigint: true,history: require('prompt-sync-history')()});
+
 
 
 /**
@@ -24,7 +26,11 @@ exports.decryptShardedKey = function(args, onFinish) {
     const passwords = [];
     let keysToRecover;
 
-    console.log('\nDecrypting key from ' + input.inputfile );
+    // Replaced input.inputfile with an aggregated file
+
+    // prompt users to upload shards one by one, then construct one large encrypted file that looks like the
+
+    // console.log('\nDecrypting key from ' + input.inputfile );
 
     /**
      * Get a password from the user, testing it against encrypted shares
@@ -74,8 +80,10 @@ exports.decryptShardedKey = function(args, onFinish) {
     // key indices has been deprecated ^
         .then(function() {
             // Grab the list of keys from the file
-            const json = fs.readFileSync(input.inputfile);
-            const keys = JSON.parse(json);
+            // const json = fs.readFileSync(input.inputfile)
+            // const keys = JSON.parse(json);
+
+            const keys = uploadKeyShares(false);
 
             // Determine and validate the indices of the keys to recover
             let indices = input.keys.split(',')
@@ -125,7 +133,8 @@ exports.decryptShardedKey = function(args, onFinish) {
                 return {
                     index: key.index,
                     xpub: xpub,
-                    xprv: xprv
+                    xprv: xprv,
+                    seed: seed
                 };
             });
             if(onFinish) {
@@ -133,3 +142,68 @@ exports.decryptShardedKey = function(args, onFinish) {
             }
         });
 };
+
+/**
+ * Prompt the user to upload all the key shares from separate files
+ * @param all : when true, the prompt will continue until all N shares are uploaded.
+ * When false, the prompt will stop once M shares have been uploaded.
+ *
+ * returns a list containing 1 json object
+ */
+const uploadKeyShares = function(all) {
+    console.log("\nIt is now time to upload the key shares you wish to use.\n");
+    const currentPrvs= [];
+    let m = null;
+    let n = null;
+    let xpub = null;
+    while(true) {
+        const inputfile = prompt("Enter the file path containing a key share: ");
+        try {
+            const file = fs.readFileSync(inputfile);
+            const json = JSON.parse(file);
+
+            // Enforce file contents are correct
+            if(!json.m) throw new Error('File does not contain the required field: m');
+            if(!json.n) throw new Error('File does not contain the required field: n');
+            if(!json.xpub) throw new Error('File does not contain the required field: xpub');
+            if(!json.xprv) throw new Error('File does not contain the required field: xprv');
+
+
+            // Sanity check that share matches previous shares uploaded just now
+            if(m) {
+                if (json.m !== m) throw new Error('m does not match previous share');
+                if(json.n !== n) throw new Error('n does not match previous share');
+                if(json.xpub !== xpub) throw new Error('xpub does not match previous share');
+            } else {
+                m = json.m;
+                n = json.n;
+                xpub = json.xpub;
+            }
+
+            // Make sure not uploading a duplicate share
+            if(currentPrvs.includes(json.xprv)) throw new Error('tried to upload a duplicate share');
+
+            currentPrvs.push(json.xprv);
+
+            console.log('\nSuccessfully uploaded ' + inputfile + '\n');
+
+            // if we've uploaded n shares, break the loop
+            if(currentPrvs.length === n) break;
+
+            // if we've uploaded m shares, and that's all the user wants, break the loop
+            if(!all && currentPrvs.length === m) break;
+
+        } catch (err) {
+            console.log("There was an error reading the file: " + err.message);
+        }
+    }
+
+    // Now construct and return the json with all the shares
+    return [{
+        index: 0,
+        xpub: xpub,
+        m: m,
+        n: n,
+        seedShares:currentPrvs
+    }]
+}

@@ -239,7 +239,7 @@ exports.UserInput.prototype.getVariable = function(name, question, required, def
                 return;
             }
             return Q().then(function() {
-                if (name === 'password' || name === 'passcode') {
+                if (name === 'password' || name === 'passcode' || name === 'entropy') {
                     return self.promptPassword(question);
                 } else {
                     return self.prompt(question, required);
@@ -327,9 +327,9 @@ exports.addUserEntropy = function(userString) {
  * @param   {Number} index   the index of the key in the batch
  * @returns {Object}         information about the key
  */
-exports.genSplitKey = function(params, index) {
+exports.genSplitKey = function(params, reshardSeed) {
     const self = this;
-    const key = exports.genKey();
+    const key = exports.genKey(reshardSeed);
     const result = {
         xpub: key.xpub,
         m: params.m,
@@ -361,10 +361,15 @@ exports.genSplitKey = function(params, index) {
     return result;
 };
 
-exports.genKey = function() {
+exports.genKey = function(reshardSeed) {
     exports.addEntropy(128);
     const seedLength = 256 / 32; // 256 bits / 32-bit words
-    const seed = sjcl.codec.hex.fromBits(sjcl.random.randomWords(seedLength));
+    let seed;
+    if(reshardSeed) {
+        seed = reshardSeed;
+    } else {
+        seed = sjcl.codec.hex.fromBits(sjcl.random.randomWords(seedLength));
+    }
     const extendedKey = bitcoin.HDNode.fromSeedHex(seed);
     const returnKey = {
         seed: seed,

@@ -18,6 +18,7 @@ const MasterKey = require('./models/masterkey.js');
 const signingTool = require('./sign.js');
 const WalletKey = require('./models/walletkey.js');
 const utils = require('./utils');
+const prompt = require('prompt-sync')({sigint: true, history: require('prompt-sync-history')()});
 const decryptShards = require('./decryptshards.js');
 const parser = new ArgumentParser({
   version: pjson.version,
@@ -128,6 +129,7 @@ setVerificationCommand.addArgument(
 );
 
 const generateKeysCommand = subparsers.addParser('generate', { addHelp: true });
+/*
 generateKeysCommand.addArgument(
   ['inputfile'],
   {
@@ -135,6 +137,7 @@ generateKeysCommand.addArgument(
     help: 'file containing the master seed to derive hardened child keys from'
   }
 );
+*/
 generateKeysCommand.addArgument(
   ['outputfile'],
   {
@@ -169,43 +172,6 @@ generateKeysCommand.addArgument(
     }
 );
 
-const generateFromShards = subparsers.addParser('generateFromShards', { addHelp: true });
-
-generateFromShards.addArgument(
-    ['inputfile'],
-    {
-        action: 'store',
-        help: 'the name of the file that contains encrypted shards of a private key. this should be a json file in the' +
-            'format that is output by "newkey"'
-    }
-);
-
-generateFromShards.addArgument(
-    ['outputfile'],
-    {
-        action: 'store',
-        help: 'prefix of a new .json output file to save generated private keys to'
-    }
-);
-generateFromShards.addArgument(
-    ['-n'],
-    {
-        action: 'store',
-        defaultValue: 100000,
-        type: Number,
-        help: 'number of keys to generate'
-    }
-);
-generateFromShards.addArgument(
-    ['--start'],
-    {
-        action: 'store',
-        defaultValue: 0,
-        type: Number,
-        help: 'first path to derive (i.e. 0 for m/0\', or 10000 for m/10000\')'
-    }
-);
-
 const createSeed = subparsers.addParser('seed', {
   addHelp: true,
   description: 'Generates a cryptographically secure random seed to be used for Stellar key derivation.\n' +
@@ -220,18 +186,15 @@ createSeed.addArgument(
     }
 );
 
+const reshard = subparsers.addParser('reshard', {
+    addHelp: true,
+    description: "Reshard a master key. Upload the shares and create new shares of the same master key, with new passwords"
+});
+
 const newKey = subparsers.addParser('newkey', {
     addHelp: true,
     description: "Generates a master key, splits it into encrypted shards, and stores it as a file"
 });
-
-newKey.addArgument(
-    [ 'outputfile' ],
-    {
-        action: 'store',
-        help: 'prefix of the .json output file to store the newly generated encrypted key shards'
-    }
-);
 
 newKey.addArgument(
     ['--type'],
@@ -416,12 +379,17 @@ const generatePubKeys = function(args) {
  * This function is only used to generate an XLM seed right now
  */
 const handleGenerateHDSeed = function(args) {
+  let filename = prompt('Enter output filename: ');
+  assertFileDoesNotExist(filename);
+
   const XLM_SEED_LENGTH = 64;
   const seed = crypto.randomBytes(XLM_SEED_LENGTH).toString('hex');
-  let filename = args.outputfile;
+  // let filename = args.outputfile;
   const seedJson = { seed: seed };
 
-  assertFileDoesNotExist(filename);
+
+
+
   fs.writeFileSync(filename, JSON.stringify(seedJson, null, 2));
   console.log("\nGenerated a random seed and stored in the file: " + filename + "\n");
 };
@@ -497,7 +465,7 @@ const handleNewKey = co(function *(args) {
     if(args.type === 'xlm') {
         handleGenerateHDSeed(args);
     } else {
-        yield handleInitShardedKey(args);
+        yield handleInitShardedKey(args, false);
     }
 });
 
@@ -509,11 +477,11 @@ const handleNewKey = co(function *(args) {
  * produce the seed. The SSSS shares are encrypted with N separate
  * passwords, intended to be provided at run-time by separate individuals.
  */
-const handleInitShardedKey = function(args) {
+const handleInitShardedKey = function(args, reshardSeed) {
     const self = this;
     const input = new utils.UserInput(args);
-    const filename = input.outputfile;
-    assertFileDoesNotExist(filename);
+    // const filename = input.outputfile;
+    // assertFileDoesNotExist(filename);
     const getPassword = function(i, n) {
         if (i === n) {
             return;
@@ -526,10 +494,15 @@ const handleInitShardedKey = function(args) {
     };
 
     return Q().then(function() {
-        console.log('Generate Split Keys');
         console.log();
     })
-        .then(input.getVariable('enter',"You are about to generate a key, press enter to continue\n"))
+        .then(function() {
+            if(reshardSeed) {
+                return input.getVariable('enter',"You are about to reshard a key, press enter to continue\n")();
+            } else {
+                return input.getVariable('enter',"You are about to generate a key, press enter to continue\n")();
+            }
+        })
         .then(input.getIntVariable('n', 'Number of shares per key (N): ', true, 1, 10))
         .then(function() {
             let mMin = 2;
@@ -550,7 +523,7 @@ const handleInitShardedKey = function(args) {
         })
         .then(function() {
             const keys = _.range(0, 1).map(function(index) {
-                const key = utils.genSplitKey(input);
+                const key = utils.genSplitKey(input, reshardSeed);
                 if (index % 10 === 0) {
                     console.log('Generating key ' + index);
                 }
@@ -562,13 +535,56 @@ const handleInitShardedKey = function(args) {
                     seedShares: key.seedShares
                 };
             });
+
+            // Instead of writing file here, prompt each user for passphrase one by one
+            // prompt for output folder/filename.json
+            // prompt for password, check for validity, and write to USB
+
+            // take keys file and generate N files instead
+            for(let shareIndex=0; shareIndex<keys[0].seedShares.length; shareIndex++) {
+                const passwordAttempt = prompt("Please enter the password for share " + shareIndex + ": ", {echo: '*'});
+                if(input['password'+shareIndex] !== passwordAttempt) {
+                    console.log('Incorrect password! Try again.');
+                    shareIndex--;
+                } else {
+                    const outFile = prompt("Enter filename path to save share " + shareIndex + ': ');
+                    try {
+                        assertFileDoesNotExist(outFile);
+                        console.log(outFile + '\n\n');
+                        const fileContents = {
+                            m: keys[0].m,
+                            n: keys[0].n,
+                            xpub: keys[0].xpub,
+                            xprv: keys[0].seedShares[shareIndex]
+                        }
+                        try {
+                            fs.writeFileSync(outFile, JSON.stringify(fileContents, null, 2));
+                            console.log('Share ' + shareIndex + ' saved to file ' + outFile);
+                        } catch (err) {
+                            console.log('There was an error writing the file: ' + err.message);
+                            shareIndex--;
+                        }
+                    } catch (err) {
+                        console.log('Error: ' + err.message);
+                        shareIndex--; // try again
+                    }
+                }
+            }
+
+            /*
             fs.writeFileSync(filename, JSON.stringify(keys, null, 2));
             console.log('Wrote ' + filename);
             const csvRows = keys.map(function(key) {
                 return key.index + ',' + key.xpub;
             });
+            */
         });
 };
+
+
+
+
+
 
 const handleRecoverKeys = co(function *(args) {
    console.log('\n\nWARNING!! This will print a private key to the console. Continue at your own risk, or CTRL-C to exit\n');
@@ -598,9 +614,10 @@ const handleSignPrep = co(function *(args) {
         signingTool.handleSign(args);
         return;
     }
+    /*
     if(!args.keyfile) {
         throw new Error('Please include either a --key or --keyfile to sign the transaction with');
-    }
+    }*/
 
     // if we get here, the user has passed in a keyfile to sign the transaction
     if(args.type === 'xlm') {
@@ -622,9 +639,16 @@ const handleSignPrep = co(function *(args) {
         args.type = 'xprv';
         signingTool.handleSign(args);
     }
-    args.inputfile = args.keyfile;
+    // args.inputfile = args.keyfile;
     yield decryptShards.decryptShardedKey(args, afterDecryption);
 
+});
+
+const handleReshard = co(function *(args) {
+    const afterDecryption = function(keys) {
+        handleInitShardedKey(args, keys[0].seed);
+    }
+    yield decryptShards.decryptShardedKey(args, afterDecryption);
 });
 
 const run = co(function *(testArgs) {
@@ -659,8 +683,8 @@ const run = co(function *(testArgs) {
       console.log('recover has been disabled');
       // yield handleRecoverKeys(args);
       break;
-    case 'generateFromShards':
-      yield handleGenerateFromShards(args);
+    case 'reshard':
+      yield handleReshard(args);
       break;
   }
 
