@@ -183,6 +183,15 @@ const reshard = subparsers.addParser('reshard', {
     description: "Reshard a master key. Upload the shares and create new shares of the same master key, with new passwords"
 });
 
+reshard.addArgument(
+    ['--type'],
+    {
+        action: 'store',
+        defaultValue: 'xprv',
+        help: 'pass in type "xlm" to reshard an xlm seed'
+    }
+);
+
 const newKey = subparsers.addParser('newkey', {
     addHelp: true,
     description: "Generates a master key, splits it into encrypted shards, and stores it as a file"
@@ -192,8 +201,8 @@ newKey.addArgument(
     ['--type'],
     {
         action: 'store',
-        defaultValue: 'shards',
-        help: 'pass in type "xlm" to create an xlm seed. note that xlm seeds are stored in a non-encrypted .json file'
+        defaultValue: 'xprv',
+        help: 'pass in type "xlm" to create an xlm seed'
     }
 );
 
