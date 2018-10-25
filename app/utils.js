@@ -388,6 +388,7 @@ exports.genKey = function(reshardSeed, type) {
             returnKey = exports.handleGenerateHDSeed();
             return returnKey;
         } else {
+            const seedLength = 256 / 32; // 256 bits / 32-bit words
             seed = sjcl.codec.hex.fromBits(sjcl.random.randomWords(seedLength));
         }
     }
