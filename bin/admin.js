@@ -5,5 +5,5 @@ const admin = require('../app/admin');
 
 Promise.try(admin.run).catch(function(e) {
   console.log(e.message);
-  admin.db.connection.close();
+  if(admin.db) admin.db.connection.close();
 });
