@@ -13,7 +13,7 @@ const read = require('read');
 const sjcl = require('sjcl');
 const secrets = require('secrets.js-grempe');
 const bitcoin = require('bitgo-utxo-lib');
-const db = require('./db.js');
+let db = null;
 const MasterKey = require('./models/masterkey.js');
 const signingTool = require('./sign.js');
 const WalletKey = require('./models/walletkey.js');
@@ -650,8 +650,11 @@ const run = co(function *(testArgs) {
       args.outputfile = makeItJSON(args.outputfile);
   }
   switch (args.cmd) {
-    case 'import':
+      case 'import':
+        // only require the DB if importing public keys. can't import db in an offline env
+      db = require('./db.js');
       yield handleImportKeys(args);
+      db.connection.close();
       break;
     case 'sign':
       yield handleSignPrep(args);
@@ -681,7 +684,6 @@ const run = co(function *(testArgs) {
       break;
   }
 
-  db.connection.close();
 });
 
 /**
