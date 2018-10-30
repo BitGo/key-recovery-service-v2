@@ -44,11 +44,13 @@ const notifyEndpoint = co(function *(key, state) {
 });
 
 const sendDatabaseLowWarning = co(function *(availableKeys, type) {
-  yield utils.sendMailQ(
-    process.config.adminemail,
-    'URGENT: Please replenish the master key database',
-    'databaselow',
-    { availableKeys, type });
+  if(!process.config.disableAllEmails) {
+      yield utils.sendMailQ(
+          process.config.adminemail,
+          'URGENT: Please replenish the master key database',
+          'databaselow',
+          {availableKeys, type});
+  }
 });
 
 /**
@@ -154,8 +156,7 @@ exports.provisionKey = co(function *(req) {
 
   yield masterKey.update({ $inc: { keyCount: 1 } });
 
-  //if (!req.body.disableKRSEmail) {
-  if(false) {
+  if (!process.config.disableAllEmails && !req.body.disableKRSEmail) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
