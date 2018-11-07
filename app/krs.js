@@ -82,6 +82,11 @@ const provisionMasterKey = co(function *(coin, customerId) {
  * @return {MasterKey} the master key to use for derivation
  */
 const getMasterXpub = co(function *(coin, customerId) {
+
+  if(process.config.neverReuseMasterKey) {
+    return provisionMasterKey(coin, customerId);
+  }
+
   let masterKey = yield MasterKey.findOne({ coin, customerId });
 
   if (!masterKey) {
@@ -130,6 +135,17 @@ exports.provisionKey = co(function *(req) {
   }
 
   let masterKey;
+
+  /*
+   Never reuse a key
+
+   Delete WalletKey Table
+
+   Only need master key table
+
+   But - to talk with wwww, we need to pass back a path
+
+   */
 
   if (process.config.supportedcoins[coin] === 'xlm') {
     // ALWAYS provision a new master key for Stellar wallets, and use the master key as the wallet key
