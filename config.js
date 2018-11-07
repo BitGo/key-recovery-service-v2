@@ -40,6 +40,5 @@ module.exports = {
       "bitgo": "changeThisSecret"
     }
   },
-  "lowKeyWarningLevels": [10000, 5000, 1000, 500, 100, 0],
-  "disableAllEmails": true
+  "lowKeyWarningLevels": [10000, 5000, 1000, 500, 100, 0]
 };
