@@ -60,13 +60,13 @@ const sendDatabaseLowWarning = co(function *(availableKeys, type) {
 const provisionMasterKey = co(function *(coin, customerId) {
   const keyType = process.config.supportedcoins[coin];
 
-  const key = yield MasterKey.findOneAndUpdate({ coin: null, customerId: null, type: keyType }, { coin: coin, customerId: customerId, type: keyType });
+  const key = yield MasterKey.findOneAndUpdate({ coin: null, customerId: null}, { coin: coin, customerId: customerId, type: keyType });
 
   if (!key) {
     throw utils.ErrorResponse(500, `no available ${keyType} keys`);
   }
 
-  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: keyType });
+  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null});
 
   if (_.includes(process.config.lowKeyWarningLevels, availableKeys)) {
     yield sendDatabaseLowWarning(availableKeys, keyType);
@@ -139,7 +139,7 @@ exports.provisionKey = co(function *(req) {
   if (process.config.supportedcoins[coin] === 'xlm') {
     // ALWAYS provision a new master key for Stellar wallets, and use the master key as the wallet key
     masterKey = yield provisionMasterKey(coin, customerId);
-    key.pub = masterKey.pub;
+    key.pub = masterKey.xlmpub;
   } else {
     // find the correct master key (assigning if necessary), and derive a wallet key off of it
     masterKey = yield getMasterXpub(coin, customerId);

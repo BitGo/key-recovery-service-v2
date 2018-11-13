@@ -183,7 +183,7 @@ const validateKey = function(key, type) {
     return false;
   }
 
-  if (type === 'xlm' && !xlmRegex.test(key.pub)) {
+  if (type === 'xlm' && !xlmRegex.test(key.xlmpub)) {
     console.log(`Stellar Lumens key ${key.pub} is not a valid public key.`);
     return false;
   }
@@ -205,7 +205,9 @@ const saveKeys = co(function *(keys, type) {
     .map( key => ({
       type: type,
       pub: key.pub,
+      xlmpub: key.xlmpub,
       path: key.path,
+      keyid: key.keyid,
       keyCount: 0
   }));
 
@@ -220,10 +222,10 @@ const saveKeys = co(function *(keys, type) {
     yield MasterKey.insertMany(keyDocs);
     console.log('Successfully imported public keys.');
 
-    const totalKeys = yield MasterKey.countDocuments({ type: type });
-    const availableKeys = yield MasterKey.countDocuments({ type: type, coin: null, customerId: null });
+    const totalKeys = yield MasterKey.countDocuments();
+    const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null });
 
-    console.log(`New capacity: ${availableKeys} available ${type} keys out of ${totalKeys} total ${type} keys.`);
+    console.log(`New capacity: ${availableKeys} available ${type} keys out of ${totalKeys} total keys.`);
   } catch (e) {
     console.log(e.message);
     console.log('FAILED to import all public keys. This is usually caused by trying to import a public key that already exists in the database.');

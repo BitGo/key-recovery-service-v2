@@ -20,7 +20,7 @@ module.exports = {
   "host": "0.0.0.0",
   "port": 6833,
   "adminemail": "davidcruz@bitgo.com",
-  "mongouri": "mongodb://localhost:27017/key-recovery-service",
+  "mongouri": "mongodb://localhost:27017/main",
   "provider": {
     "id": "bitgo",
     "secret": "youshouldchangethis"

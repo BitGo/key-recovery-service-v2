@@ -6,7 +6,9 @@ const masterKeySchema = new mongoose.Schema({
   coin: { type: String },
   customerId: { type: String },
   pub: { type: String },
+  xlmpub: {type: String},
   path: { type: String },
+  keyid: {type: Number},
   keyCount: { type: Number }
 });
 
