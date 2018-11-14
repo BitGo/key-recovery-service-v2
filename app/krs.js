@@ -82,6 +82,11 @@ const provisionMasterKey = co(function *(coin, customerId) {
  * @return {MasterKey} the master key to use for derivation
  */
 const getMasterXpub = co(function *(coin, customerId) {
+
+  if(process.config.neverReuseMasterKey) {
+    return provisionMasterKey(coin, customerId);
+  }
+
   let masterKey = yield MasterKey.findOne({ coin, customerId });
 
   if (!masterKey) {
