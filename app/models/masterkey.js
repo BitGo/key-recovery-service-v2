@@ -19,7 +19,7 @@ masterKeySchema.methods = {
 
 masterKeySchema.index({ customerId: 1, coin: 1 }, { sparse: true });
 masterKeySchema.index({ pub: 1 }, { unique: true });
-masterKeySchema.index({ path: 1, type: 1 }, { unique: true });
+masterKeySchema.index({ path: 1, type: 1 });
 masterKeySchema.index({ type: 1 });
 
 module.exports = mongoose.connection.model('masterKey', masterKeySchema);
