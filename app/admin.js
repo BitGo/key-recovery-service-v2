@@ -200,12 +200,15 @@ const saveKeys = co(function *(keys, type) {
     return;
   }
 
+
+
   const keyDocs = keys
     .filter( key => validateKey(key, type))
     .map( key => ({
       type: type,
       pub: key.pub,
       path: key.path,
+      keyid: key.keyid,
       keyCount: 0
   }));
 
