@@ -20,7 +20,7 @@ module.exports = {
   "host": "0.0.0.0",
   "port": 6833,
   "adminemail": "danny@bitgo.com",
-  "mongouri": "mongodb://testuser:testpassword@testdb-mongodb-replicaset-0.testdb-mongodb-replicaset.default.svc.cluster.local,testdb-mongodb-replicaset-1.testdb-mongodb-replicaset.default.svc.cluster.local,testdb-mongodb-replicaset-2.testdb-mongodb-replicaset.default.svc.cluster.local/main?replicaSet=rs0",
+  "mongouri": process.env.KRSV2_DBURL,
   "provider": {
     "id": "bitgo",
     "secret": "youshouldchangethis"
