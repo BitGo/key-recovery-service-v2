@@ -41,5 +41,6 @@ module.exports = {
     }
   },
   "neverReuseMasterKey": true,
+  "disableAllKRSEmail": true,
   "lowKeyWarningLevels": [10000, 5000, 1000, 500, 100, 0]
 };
