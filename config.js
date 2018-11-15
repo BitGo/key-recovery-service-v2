@@ -20,7 +20,7 @@ module.exports = {
   "host": "0.0.0.0",
   "port": 6833,
   "adminemail": "danny@bitgo.com",
-  "mongouri": process.env.KRSV2_DBURL,
+  "mongouri":  process.env.KRSV2_DBURL,
   "provider": {
     "id": "bitgo",
     "secret": "youshouldchangethis"
