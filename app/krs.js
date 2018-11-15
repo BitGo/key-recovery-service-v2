@@ -68,7 +68,7 @@ const provisionMasterKey = co(function *(coin, customerId) {
 
   const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: keyType });
 
-  if (_.includes(process.config.lowKeyWarningLevels, availableKeys)) {
+  if (_.includes(process.config.lowKeyWarningLevels, availableKeys) && !process.config.disableAllKRSEmail) {
     yield sendDatabaseLowWarning(availableKeys, keyType);
   }
 

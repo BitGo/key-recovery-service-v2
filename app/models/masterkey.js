@@ -7,7 +7,6 @@ const masterKeySchema = new mongoose.Schema({
   customerId: { type: String },
   pub: { type: String },
   path: { type: String },
-  keyid: {type: String},
   keyCount: { type: Number }
 });
 
@@ -19,7 +18,7 @@ masterKeySchema.methods = {
 
 masterKeySchema.index({ customerId: 1, coin: 1 }, { sparse: true });
 masterKeySchema.index({ pub: 1 }, { unique: true });
-masterKeySchema.index({ path: 1, type: 1 });
+masterKeySchema.index({ path: 1, type: 1 }, { unique: true });
 masterKeySchema.index({ type: 1 });
 
 module.exports = mongoose.connection.model('masterKey', masterKeySchema);
