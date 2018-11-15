@@ -26,7 +26,7 @@ module.exports = {
     "secret": "youshouldchangethis"
   },
   "mail": {
-    "fromemail": "BitGo Key Recovery Service <no-reply@bitgo.com>",
+    "fromemail": "Friendly Key Recovery Service <no-reply@yourdomain.com>",
     "host": "smtp.mailgun.org",
     "port": 587,
     "auth": {
