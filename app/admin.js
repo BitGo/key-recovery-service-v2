@@ -60,6 +60,14 @@ signCommand.addArgument(
   }
 );
 signCommand.addArgument(
+    ['--path'],
+    {
+        action: 'store',
+        required: false,
+        help: 'optional derivation path to derive from the given key'
+    }
+);
+signCommand.addArgument(
   ['--confirm'],
   {
     action: 'storeTrue',
