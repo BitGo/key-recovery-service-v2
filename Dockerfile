@@ -6,7 +6,7 @@ COPY package*.json ./
 
 RUN npm install
 
-ENV KRSV2_DBURL '< Your db url here >'
+ENV KRSV2_DBURL '< DB URL HERE >'
 
 COPY . .
 
