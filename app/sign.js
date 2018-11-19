@@ -314,6 +314,11 @@ const handleSign = function(args) {
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
   const coin = recoveryRequest.coin;
 
+  if(!args.key) {
+    console.log("\nEnter your private key for signing.\nEnter an xprv or 24 words.\nIf entering 24 words, separate each word with only a comma and no spaces.\n");
+    args.key = prompt("Key: ");
+  }
+
   const key = parseKey(args.key, coin, args.path);
 
   let txHex;
