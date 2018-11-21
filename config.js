@@ -1,6 +1,6 @@
 module.exports = {
-  "name": "BitGo Key Recovery Service",
-  "serviceurl": "www.bitgo.com/",
+  "name": "Friendly Key Recovery Service",
+  "serviceurl": "yourdomain.com",
   "supportedcoins": {
     btc: 'xpub',
     tbtc: 'xpub',
