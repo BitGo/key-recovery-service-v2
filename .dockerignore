@@ -1,4 +1,8 @@
-.*
 LICENSE
 README.md
 test/*
+.argconfig
+.dockerignore
+.idea
+.git
+.gitignore

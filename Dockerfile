@@ -6,8 +6,6 @@ COPY package*.json ./
 
 RUN npm install
 
-ENV KRSV2_DBURL '< DB URL HERE >'
-
 COPY . .
 
 EXPOSE 6833
