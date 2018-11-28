@@ -1,7 +1,7 @@
 LICENSE
 README.md
 test/*
-.argconfig
+.arcconfig
 .dockerignore
 .idea
 .git
