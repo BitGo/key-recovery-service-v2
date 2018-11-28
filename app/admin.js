@@ -13,6 +13,7 @@ const MasterKey = require('./models/masterkey.js');
 const signingTool = require('./sign.js');
 const WalletKey = require('./models/walletkey.js');
 const utils = require('./utils');
+const bitcoinMessage = require('bitcoinjs-message');
 
 const parser = new ArgumentParser({
   version: pjson.version,
@@ -188,6 +189,28 @@ const validateKey = function(key, type) {
     return false;
   }
 
+  // if we have provided a verificationPub, then check the key signature
+  if (process.config.verificationPub) {
+
+      if (!key.signature) {
+          console.log('Key ${key.pub} requires a signature and does not have one.');
+          return false;
+      }
+
+      let validSig = false;
+      try {
+          validSig = bitcoinMessage.verify(key.pub, process.config.verificationPub, key.signature);
+      } catch (err) {
+          console.log('There was an error when verifying key ${key.pub}: ' + err.message);
+          return false;
+      }
+
+      if (!validSig) {
+          console.log('Invalid signature detected on key ${key.pub}');
+          return false;
+      }
+  }
+
   return true;
 };
 
@@ -208,7 +231,7 @@ const saveKeys = co(function *(keys, type) {
       type: type,
       pub: key.pub,
       path: key.path,
-      keyid: key.keyid,
+      signature: key.signature,
       keyCount: 0
   }));
 
@@ -365,4 +388,4 @@ const run = co(function *(testArgs) {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateKey, db };
+module.exports = { run, validateKey, saveKeys, db };

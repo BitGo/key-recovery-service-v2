@@ -7,13 +7,13 @@ const masterKeySchema = new mongoose.Schema({
   customerId: { type: String },
   pub: { type: String },
   path: { type: String },
-  keyid: {type: String},
+  signature: {type: String},
   keyCount: { type: Number }
 });
 
 masterKeySchema.methods = {
   toJSON: function() {
-    return _.pick(this, ['type', 'coin', 'customerId', 'pub', 'path', 'keyCount']);
+    return _.pick(this, ['type', 'coin', 'customerId', 'pub', 'path', 'signature', 'keyCount']);
   }
 };
 

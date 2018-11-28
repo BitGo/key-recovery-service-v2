@@ -157,6 +157,11 @@ exports.provisionKey = co(function *(req) {
 
   yield key.save();
 
+  // If the master key has a signature, we include the signature in the response to the user
+  if (masterKey.signature) {
+    key.masterKeySig = masterKey.signature;
+  }
+
   yield masterKey.update({ $inc: { keyCount: 1 } });
 
   if (!req.body.disableKRSEmail) {
