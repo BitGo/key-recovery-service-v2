@@ -5,6 +5,7 @@ const _ = require('lodash');
 const BN = require('bignumber.js');
 const prompt = require('prompt-sync')();
 const utils = require('./utils');
+const bip39 = require('bip39');
 
 const utxoNetworks = {
   btc: utxoLib.networks.bitcoin,
@@ -276,12 +277,49 @@ const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
   return transaction.serialize().toString('hex');
 };
 
+/* *
+  Takes in either an xprv, xlmsecret, or 24 words.
+  Returns an xprv or xlmsecret
+ */
+const parseKey = function(rawkey, coin, path) {
+
+  if(rawkey.includes(',') && rawkey.split(',').length === 24) {
+    const mnemonic = rawkey.replace(/,/g,' '); // replace commas with spaces
+    if(coin === 'xlm' || coin === 'txlm') {
+      // stellar is special (thanks Jeb)
+      const stellarWallet = stellarHd.fromMnemonic(mnemonic);
+      return stellarWallet.getSecret(0);
+    }
+
+    // every other coin can use xpubs
+    if(!bip39.validateMnemonic(mnemonic)) {
+      throw new Error("Invalid mnemonic");
+    }
+    const seed = bip39.mnemonicToSeed(mnemonic);
+    let node = utxoLib.HDNode.fromSeedBuffer(seed);
+    if(path) {
+      node = node.derivePath(path);
+    }
+    const xprv = node.toBase58();
+    return xprv;
+
+  }
+  // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
+  return key;
+}
+
 const handleSign = function(args) {
   const file = args.file;
-  const key = args.key;
 
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
   const coin = recoveryRequest.coin;
+
+  if(!args.key) {
+    console.log("\nEnter your private key for signing.\nEnter an xprv or 24 words.\nIf entering 24 words, separate each word with only a comma and no spaces.\n");
+    args.key = prompt("Key: ");
+  }
+
+  const key = parseKey(args.key, coin, args.path);
 
   let txHex;
 
@@ -315,4 +353,4 @@ const handleSign = function(args) {
   console.log('Done');
 };
 
-module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20 };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, parseKey };
