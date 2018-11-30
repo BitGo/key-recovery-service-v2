@@ -216,7 +216,6 @@ const saveKeys = co(function *(keys, type) {
       type: type,
       pub: key.pub,
       path: key.path,
-      keyid: key.keyid,
       keyCount: 0
   }));
 
