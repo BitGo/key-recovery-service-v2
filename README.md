@@ -39,6 +39,12 @@ The key server is BitGo's interface to the KRS service. It is responsible for st
 
 Replace `user@example.com` with your email in the above example to receive an email with your backup key.
 
+**To Run Server as a Docker Container**
+
+1. From the KRS main repository, run `docker build -t my-image-name .` (note the period at the end)
+2. Run `docker run -p 6833:6833 my-image-name`
+3. The service should now be running - see step (7) above to test
+
 Offline Environment Setup
 ====================
 An offline environment is required for generating master keys, deriving hardened customer keys, and signing recovery transactions.

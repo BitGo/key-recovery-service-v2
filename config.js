@@ -1,6 +1,6 @@
 module.exports = {
-  "name": "Friendly Key Backup Service",
-  "serviceurl": "http://keyrecoveryservice.yourdomain.com/",
+  "name": "Friendly Key Recovery Service",
+  "serviceurl": "yourdomain.com",
   "supportedcoins": {
     btc: 'xpub',
     tbtc: 'xpub',
@@ -19,14 +19,14 @@ module.exports = {
   },
   "host": "0.0.0.0",
   "port": 6833,
-  "adminemail": "davidcruz@bitgo.com",
-  "mongouri": "mongodb://localhost:27017/key-recovery-service",
+  "adminemail": "danny@bitgo.com",
+  "mongouri":  process.env.KRSV2_DBURL,
   "provider": {
     "id": "bitgo",
     "secret": "youshouldchangethis"
   },
   "mail": {
-    "fromemail": "KRS.XYZ <krs@example.com>",
+    "fromemail": "Friendly Key Recovery Service <no-reply@yourdomain.com>",
     "host": "smtp.mailgun.org",
     "port": 587,
     "auth": {
@@ -42,5 +42,6 @@ module.exports = {
   },
   "verificationPub": null,
   "neverReuseMasterKey": true,
+  "disableAllKRSEmail": true,
   "lowKeyWarningLevels": [10000, 5000, 1000, 500, 100, 0]
 };

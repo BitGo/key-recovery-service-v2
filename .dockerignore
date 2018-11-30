@@ -1,0 +1,9 @@
+LICENSE
+README.md
+test/*
+.arcconfig
+.dockerignore
+.idea
+.git
+.gitignore
+node_modules
