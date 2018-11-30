@@ -95,125 +95,121 @@ describe('Offline Admin Tool', function() {
   });
 
   describe('Stellar key derivation', function() {
-      process.config.verificationPub = null;
-      // from test 3 at https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
-      const MASTER_SEED = '937ae91f6ab6f12461d9936dfc1375ea5312d097f3f1eb6fed6a82fbe38c85824da8704389831482db0433e5f6c6c9700ff1946aa75ad8cc2654d6e40f567866'
+    process.config.verificationPub = null;
+    // from test 3 at https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
+    const MASTER_SEED = '937ae91f6ab6f12461d9936dfc1375ea5312d097f3f1eb6fed6a82fbe38c85824da8704389831482db0433e5f6c6c9700ff1946aa75ad8cc2654d6e40f567866'
 
-      describe('failure', function() {
-          it('should fail with an invalid master seed', function() {
-              const BAD_SEED = '-thisisabadseed';
-
-              (function() { utils.deriveChildKey(BAD_SEED, "m/148'", 'xlm') }).should.throw(Error);
-          });
-
-          it('should fail with an invalid derivation path', function() {
-              (function() { utils.deriveChildKey(MASTER_SEED, 'derivation path', 'xlm') }).should.throw(Error);
-          });
+    describe('failure', function() {
+      it('should fail with an invalid master seed', function() {
+        const BAD_SEED = '-thisisabadseed';
+        (function() { utils.deriveChildKey(BAD_SEED, "m/148'", 'xlm') }).should.throw(Error);
       });
 
-      describe('success', function() {
-          // test 3 from https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
-          it("should find m/44'/148'/0' of test vector 3", function() {
-              const pub = 'GC3MMSXBWHL6CPOAVERSJITX7BH76YU252WGLUOM5CJX3E7UCYZBTPJQ';
-              const priv = 'SAEWIVK3VLNEJ3WEJRZXQGDAS5NVG2BYSYDFRSH4GKVTS5RXNVED5AX7';
+      it('should fail with an invalid derivation path', function() {
+        (function() { utils.deriveChildKey(MASTER_SEED, 'derivation path', 'xlm') }).should.throw(Error);
+      });
+    });
+    describe('success', function() {
+      // test 3 from https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
+      it("should find m/44'/148'/0' of test vector 3", function() {
+        const pub = 'GC3MMSXBWHL6CPOAVERSJITX7BH76YU252WGLUOM5CJX3E7UCYZBTPJQ';
+        const priv = 'SAEWIVK3VLNEJ3WEJRZXQGDAS5NVG2BYSYDFRSH4GKVTS5RXNVED5AX7';
 
-              const publicKey = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/0'", 'xlm', true);
-              publicKey.should.equal(pub);
-              const secret = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/0'", 'xlm', false);
-              secret.should.equal(priv);
-          });
+        const publicKey = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/0'", 'xlm', true);
+         publicKey.should.equal(pub);
+        const secret = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/0'", 'xlm', false);
+        secret.should.equal(priv);
+      });
 
-          // test 3 from https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
-          it("should find m/44'/148'/6' of test vector 3", function() {
-              const pub = 'GCUDW6ZF5SCGCMS3QUTELZ6LSAH6IVVXNRPRLAUNJ2XYLCA7KH7ZCVQS';
-              const priv = 'SBSHUZQNC45IAIRSAHMWJEJ35RY7YNW6SMOEBZHTMMG64NKV7Y52ZEO2';
-
-              const publicKey = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/6'", 'xlm', true);
-              publicKey.should.equal(pub);
-              const secret = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/6'", 'xlm', false);
-              secret.should.equal(priv);
-          });
-      })
+      // test 3 from https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md#test-cases
+      it("should find m/44'/148'/6' of test vector 3", function() {
+        const pub = 'GCUDW6ZF5SCGCMS3QUTELZ6LSAH6IVVXNRPRLAUNJ2XYLCA7KH7ZCVQS';
+        const priv = 'SBSHUZQNC45IAIRSAHMWJEJ35RY7YNW6SMOEBZHTMMG64NKV7Y52ZEO2';
+        const publicKey = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/6'", 'xlm', true);
+        publicKey.should.equal(pub);
+        const secret = utils.deriveChildKey(MASTER_SEED, "m/44'/148'/6'", 'xlm', false);
+        secret.should.equal(priv);
+      });
+  })
   });
 
   describe('Key signature verification', function() {
+    describe('failure', function() {
+      it('should fail xpub validation with a bad signature', function() {
+        process.config.verificationPub = testVerificationPub;
+        const key = {
+          pub: xpub,
+          signature: badSig
+        };
+        const valid = admin.validateKey(key,'xpub');
+        valid.should.equal(false);
+      });
 
-        describe('failure', function() {
-            it('should fail xpub validation with a bad signature', function() {
-                process.config.verificationPub = testVerificationPub;
-                const key = {
-                    pub: xpub,
-                    signature: badSig
-                };
-                const valid = admin.validateKey(key,'xpub');
-                valid.should.equal(false);
-            });
+      it('should fail xlm validation with a bad signature', function() {
+        process.config.verificationPub = testVerificationPub;
+        const key = {
+          pub: xlmPub,
+          signature: badSig
+        };
+        const valid = admin.validateKey(key,'xlm');
+        valid.should.equal(false);
+      });
 
-            it('should fail xlm validation with a bad signature', function() {
-                process.config.verificationPub = testVerificationPub;
-                const key = {
-                    pub: xlmPub,
-                    signature: badSig
-                };
-                const valid = admin.validateKey(key,'xlm');
-                valid.should.equal(false);
-            });
+      it('should fail xpub validation with no signature', function() {
+        process.config.verificationPub = testVerificationPub;
+        const key = {
+          pub: xpub
+        };
+        const valid = admin.validateKey(key,'xpub');
+        valid.should.equal(false);
+      });
 
-            it('should fail xpub validation with no signature', function() {
-                process.config.verificationPub = testVerificationPub;
-                const key = {
-                    pub: xpub
-                };
-                const valid = admin.validateKey(key,'xpub');
-                valid.should.equal(false);
-            });
+    it('should fail xlm validation with no signature', function() {
+        process.config.verificationPub = testVerificationPub;
+        const key = {
+          pub: xlmPub
+        };
+        const valid = admin.validateKey(key,'xlm');
+        valid.should.equal(false);
+    });
+   });
 
-            it('should fail xlm validation with no signature', function() {
-                process.config.verificationPub = testVerificationPub;
-                const key = {
-                    pub: xlmPub
-                };
-                const valid = admin.validateKey(key,'xlm');
-                valid.should.equal(false);
-            });
-        });
+    describe('success', function() {
+      it('should validate xpub with a good signature', function() {
+        process.config.verificationPub = testVerificationPub;
+        const key = {
+          pub: xpub,
+          signature: xpubSig
+        };
+        const valid = admin.validateKey(key,'xpub');
+        valid.should.equal(true);
+      });
 
-        describe('success', function() {
-            it('should validate xpub with a good signature', function() {
-                process.config.verificationPub = testVerificationPub;
-                const key = {
-                    pub: xpub,
-                    signature: xpubSig
-                };
-                const valid = admin.validateKey(key,'xpub');
-                valid.should.equal(true);
-            });
-
-            it('should validate xlm with a good signature', function() {
-                process.config.verificationPub = testVerificationPub;
-                const key = {
-                    pub: xlmPub,
-                    signature: xlmSig
-                };
-                const valid = admin.validateKey(key,'xlm');
-                valid.should.equal(true);
-            });
-        });
+      it('should validate xlm with a good signature', function() {
+        process.config.verificationPub = testVerificationPub;
+        const key = {
+          pub: xlmPub,
+          signature: xlmSig
+        };
+        const valid = admin.validateKey(key,'xlm');
+        valid.should.equal(true);
+      });
+    });
    });
 
   describe('Save a key with a signature', co(function *() {
-      it('should successfully save a key with a signature to the database', co(function *() {
-          process.config.verificationPub = testVerificationPub;
-          const key = {
-              pub: xpub,
-              signature: xpubSig,
-              path: '0'
-          };
-          const keyList = [key];
-          yield admin.saveKeys(keyList, 'xpub');
-          const foundKey = yield MasterKey.findOne({ pub: xpub });
-          foundKey.should.have.property('signature');
-      }));
+    it('should successfully save a key with a signature to the database', co(function *() {
+      process.config.verificationPub = testVerificationPub;
+      const key = {
+        pub: xpub,
+        signature: xpubSig,
+        path: '0'
+      };
+      const keyList = [key];
+      yield admin.saveKeys(keyList, 'xpub');
+      const foundKey = yield MasterKey.findOne({ pub: xpub });
+      foundKey.should.have.property('signature');
+    }));
   }));
 
   describe('Verification', function() {
