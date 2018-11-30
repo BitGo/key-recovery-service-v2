@@ -200,23 +200,23 @@ const validateKey = function(key, type) {
   // if we have provided a verificationPub, then check the key signature
   if (process.config.verificationPub) {
 
-      if (!key.signature) {
-          console.log(`Key ${key.pub} requires a signature and does not have one.`);
-          return false;
-      }
+    if (!key.signature) {
+      console.log(`Key ${key.pub} requires a signature and does not have one.`);
+      return false;
+    }
 
-      let validSig = false;
-      try {
-          validSig = bitcoinMessage.verify(key.pub, process.config.verificationPub, key.signature);
-      } catch (err) {
-          console.log(`There was an error when verifying key ${key.pub}: ` + err.message);
-          return false;
-      }
+    let validSig = false;
+    try {
+      validSig = bitcoinMessage.verify(key.pub, process.config.verificationPub, key.signature);
+    } catch (err) {
+      console.log(`There was an error when verifying key ${key.pub}: ` + err.message);
+      return false;
+    }
 
-      if (!validSig) {
-          console.log(`Invalid signature detected on key ${key.pub}`);
-          return false;
-      }
+    if (!validSig) {
+      console.log(`Invalid signature detected on key ${key.pub}`);
+      return false;
+    }
   }
 
   return true;
