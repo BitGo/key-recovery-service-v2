@@ -124,6 +124,13 @@ exports.provisionKey = co(function *(req) {
     throw utils.ErrorResponse(400, 'email required');
   }
 
+  const krsSpecific = req.body.krsSpecific;
+  if (krsSpecific) {
+
+    // Optional ToDo for KRS provider: implement custom code to handle the krsSpecific parameter
+
+  }
+
   if (process.config.requesterAuth && process.config.requesterAuth.required) {
     if (!req.body.requesterId && !req.body.requesterSecret) {
       throw utils.ErrorResponse(401, 'this krs requires you to send a requesterId and requesterSecret to get a key');
