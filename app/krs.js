@@ -126,7 +126,7 @@ exports.provisionKey = co(function *(req) {
 
   const krsSpecific = req.body.krsSpecific;
   if (krsSpecific) {
-
+    
     // Optional ToDo for KRS provider: implement custom code to handle the krsSpecific parameter
 
   }
