@@ -305,7 +305,7 @@ const parseKey = function(rawkey, coin, path) {
 
   }
   // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
-  return key;
+  return rawkey;
 }
 
 const handleSign = function(args) {
