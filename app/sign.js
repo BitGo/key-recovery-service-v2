@@ -91,6 +91,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   }
 
   const isBCH = recoveryRequest.coin === 'bch' || recoveryRequest.coin === 'tbch';
+  const isZEC = recoveryRequest.coin === 'zec' || recoveryRequest.coin === 'tzec';
   const transaction = utxoLib.Transaction.fromHex(recoveryRequest.transactionHex, network);
 
   const outputs = transaction.outs.map(out => ({
@@ -110,14 +111,20 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   // force override network as we use btc mainnet xpubs for all utxo coins
   backupKeyNode.keyPair.network = network;
 
-  // For BCH we need to add the input values to each input, because input values must be signed
-  if (isBCH) {
+
+  // For BCH and ZEC we need to add the input values to each input, because input values must be signed
+  if (isBCH || isZEC) {
     transaction.ins.forEach(function (input, i) {
       transaction.ins[i].value = recoveryRequest.inputs[i].amount;
     })
   }
 
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
+
+  if(isZEC) {
+    txBuilder.setVersion(utxoLib.Transaction.ZCASH_SAPLING_VERSION);
+    txBuilder.setVersionGroupId(0x892f2085);
+  }
 
   _.forEach(recoveryRequest.inputs, function(input, i) {
     const isBech32 = !input.redeemScript;
@@ -147,7 +154,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
           const witnessScript = new Buffer(input.witnessScript, 'hex');
           txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript)
         } else {
-          txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL);
+          txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount);
         }
       }
     }
