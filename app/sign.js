@@ -15,9 +15,9 @@ const utxoNetworks = {
   dash: utxoLib.networks.dash,
   tltc: utxoLib.networks.litecoin,
   tbtc: utxoLib.networks.testnet,
-  tbch: utxoLib.networks.bitcoincash,
-  tzec: utxoLib.networks.zcash,
-  tdash: utxoLib.networks.dash,
+  tbch: utxoLib.networks.bitcoincashTestnet,
+  tzec: utxoLib.networks.zcashTest,
+  tdash: utxoLib.networks.dashTest,
 };
 
 const coinDecimals = {
@@ -33,7 +33,10 @@ const coinDecimals = {
   teth: 18,
   txrp: 6,
   tltc: 8,
-  txlm: 7
+  txlm: 7,
+  tbch: 8,
+  tzec: 8,
+  tdash: 8,
 };
 
 const TEN = new BN(10);
@@ -63,7 +66,7 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
   let node;
 
   try {
-    node = prova.HDNode.fromBase58(xprv);
+    node = utxoLib.HDNode.fromBase58(xprv);
   } catch (e) {
     throw new Error('invalid private key');
   }
@@ -87,6 +90,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     throw new Error(`Unsupported coin: ${recoveryRequest.coin}`);
   }
 
+  const isBCH = recoveryRequest.coin === 'bch' || recoveryRequest.coin === 'tbch';
   const transaction = utxoLib.Transaction.fromHex(recoveryRequest.transactionHex, network);
 
   const outputs = transaction.outs.map(out => ({
@@ -106,6 +110,13 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   // force override network as we use btc mainnet xpubs for all utxo coins
   backupKeyNode.keyPair.network = network;
 
+  // For BCH we need to add the input values to each input, because input values must be signed
+  if (isBCH) {
+    transaction.ins.forEach(function (input, i) {
+      transaction.ins[i].value = recoveryRequest.inputs[i].amount;
+    })
+  }
+
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
 
   _.forEach(recoveryRequest.inputs, function(input, i) {
@@ -121,19 +132,23 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
     console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
 
-    if (isBech32) {
-      const witnessScript = Buffer.from(input.witnessScript, 'hex');
-      const witnessScriptHash = utxoLib.crypto.sha256(witnessScript);
-      const prevOutScript = utxoLib.script.witnessScriptHash.output.encode(witnessScriptHash);
-      txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
-    } else {
+    if (isBCH) {
       const redeemScript = new Buffer(input.redeemScript, 'hex');
-
-      if (isSegwit) {
-        const witnessScript = new Buffer(input.witnessScript, 'hex');
-        txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript)
+      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
+    } else {
+      if (isBech32) {
+        const witnessScript = Buffer.from(input.witnessScript, 'hex');
+        const witnessScriptHash = utxoLib.crypto.sha256(witnessScript);
+        const prevOutScript = utxoLib.script.witnessScriptHash.output.encode(witnessScriptHash);
+        txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       } else {
-        txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL);
+        const redeemScript = new Buffer(input.redeemScript, 'hex');
+        if (isSegwit) {
+          const witnessScript = new Buffer(input.witnessScript, 'hex');
+          txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript)
+        } else {
+          txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL);
+        }
       }
     }
   });
@@ -308,7 +323,7 @@ const parseKey = function(rawkey, coin, path) {
 
   }
   // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
-  return key;
+  return rawkey;
 }
 
 const handleSign = function(args) {
