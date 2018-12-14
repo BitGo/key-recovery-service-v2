@@ -90,8 +90,6 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     throw new Error(`Unsupported coin: ${recoveryRequest.coin}`);
   }
 
-  const isBCH = recoveryRequest.coin === 'bch' || recoveryRequest.coin === 'tbch';
-  const isZEC = recoveryRequest.coin === 'zec' || recoveryRequest.coin === 'tzec';
   const transaction = utxoLib.Transaction.fromHex(recoveryRequest.transactionHex, network);
 
   const outputs = transaction.outs.map(out => ({
@@ -111,20 +109,12 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   // force override network as we use btc mainnet xpubs for all utxo coins
   backupKeyNode.keyPair.network = network;
 
-
-  // For BCH and ZEC we need to add the input values to each input, because input values must be signed
-  if (isBCH || isZEC) {
-    transaction.ins.forEach(function (input, i) {
-      transaction.ins[i].value = recoveryRequest.inputs[i].amount;
-    })
-  }
+  transaction.ins.forEach(function (input, i) {
+    transaction.ins[i].value = recoveryRequest.inputs[i].amount;
+  })
 
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
-
-  if(isZEC) {
-    txBuilder.setVersion(utxoLib.Transaction.ZCASH_SAPLING_VERSION);
-    txBuilder.setVersionGroupId(0x892f2085);
-  }
+  const isBCH = recoveryRequest.coin === 'bch' || recoveryRequest.coin === 'tbch';
 
   _.forEach(recoveryRequest.inputs, function(input, i) {
     const isBech32 = !input.redeemScript;
@@ -185,7 +175,7 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
-  const backupSigningKey = backupKeyNode.getKey().getPrivateKeyBuffer();
+  const backupSigningKey = backupKeyNode.keyPair.getPrivateKeyBuffer();
 
   transaction.sign(backupSigningKey);
 
