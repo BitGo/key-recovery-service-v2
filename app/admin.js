@@ -8,10 +8,8 @@ const pjson = require('../package.json');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const db = require('./db.js');
-const MasterKey = require('./models/masterkey.js');
+let db, MasterKey, WalletKey;
 const signingTool = require('./sign.js');
-const WalletKey = require('./models/walletkey.js');
 const utils = require('./utils');
 const bitcoinMessage = require('bitcoinjs-message');
 
@@ -105,6 +103,15 @@ setVerificationCommand.addArgument(
     action: 'store',
     nargs: '+',
     help: 'verification information to store with the wallet\'s backup key'
+  }
+);
+
+const recoveryInfoCommand = subparsers.addParser('recoveryInfo', { addHelp: true });
+recoveryInfoCommand.addArgument(
+  ['pub'],
+  {
+    action: 'store',
+    help: 'the backup pub (wallet key) to be recovered'
   }
 );
 
@@ -368,11 +375,29 @@ const handleVerification = co(function *(args) {
   }
 });
 
+const handleRecoveryInfo = co(function *(args){
+  const walletkey = yield WalletKey.findOne({ pub: args.pub });
+  const masterkey = yield MasterKey.findOne({ pub: walletkey.masterKey });
+
+  const outfile = { walletkey, masterkey };
+  const filename = 'recovery-key-info.json';
+  console.log('Got info... writing file ' + filename);
+  fs.writeFileSync(filename, JSON.stringify(outfile, null, 2));
+  console.log('Done');
+});
+
+const requireDB = function() {
+  MasterKey = require('./models/masterkey.js');
+  WalletKey = require('./models/walletkey.js');
+  db = require('./db.js');
+}
+
 const run = co(function *(testArgs) {
   const args = parser.parseArgs(testArgs);
 
   switch (args.cmd) {
     case 'import':
+      requireDB();
       yield handleImportKeys(args);
       break;
     case 'sign':
@@ -388,8 +413,12 @@ const run = co(function *(testArgs) {
       handleGenerateHDSeed();
       break;
     case 'verification':
+      requireDB();
       yield handleVerification(args);
       break;
+    case 'recoveryInfo':
+      requireDB();
+      yield handleRecoveryInfo(args);
   }
 
   db.connection.close();
