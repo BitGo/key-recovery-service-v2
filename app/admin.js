@@ -108,10 +108,10 @@ setVerificationCommand.addArgument(
 
 const recoveryInfoCommand = subparsers.addParser('recoveryInfo', { addHelp: true });
 recoveryInfoCommand.addArgument(
-  ['pub'],
+  ['file'],
   {
     action: 'store',
-    help: 'the backup pub (wallet key) to be recovered'
+    help: 'the path to the recovery file that bitgo provided'
   }
 );
 
@@ -376,14 +376,17 @@ const handleVerification = co(function *(args) {
 });
 
 const handleRecoveryInfo = co(function *(args){
-  const walletkey = yield WalletKey.findOne({ pub: args.pub });
+  const json = JSON.parse(fs.readFileSync(args.file));
+  const pub = json.backupKey;
+  const walletkey = yield WalletKey.findOne({ pub });
   const masterkey = yield MasterKey.findOne({ pub: walletkey.masterKey });
-
-  const outfile = { walletkey, masterkey };
-  const filename = 'recovery-key-info.json';
-  console.log('Got info... writing file ' + filename);
-  fs.writeFileSync(filename, JSON.stringify(outfile, null, 2));
-  console.log('Done');
+  json.masterkey = masterkey.pub;
+  json.masterkeypath = masterkey.path;
+  json.walletkeypath = walletkey.path;
+  const filename = args.file.substring(0,args.file.length - 5) + '-prepared.json';
+  console.log('got info... writing file ' + filename);
+  fs.writeFileSync(filename, JSON.stringify(json, null, 2));
+  console.log('done.');
 });
 
 const requireDB = function() {
