@@ -4,10 +4,8 @@ const Promise = require('bluebird');
 const admin = require('../app/admin');
 
 Promise.try(admin.run).catch(function(e) {
-  console.log('Error connecting to database, proceeding offline...');
-  try {
+  console.log(e.message);
+  if (admin.db && admin.db.connection) {
     admin.db.connection.close();
-  } catch(e) {
-
   }
 });

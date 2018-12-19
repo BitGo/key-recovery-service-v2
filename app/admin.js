@@ -424,7 +424,9 @@ const run = co(function *(testArgs) {
       yield handleRecoveryInfo(args);
   }
 
-  db.connection.close();
+  if (db && db.connection) {
+    db.connection.close();
+  }
 });
 
 // For admin script and unit testing of functions
