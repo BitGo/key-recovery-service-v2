@@ -124,11 +124,19 @@ exports.provisionKey = co(function *(req) {
     throw utils.ErrorResponse(400, 'email required');
   }
 
+  /**
+   * Here we handle the krsSpecific parameter
+   * This parameter should be an object containing custom data relevant to your KRS policies
+   * This is an optional parameter
+   */
   const krsSpecific = req.body.krsSpecific;
   if (krsSpecific) {
-    
-    // Optional ToDo for KRS provider: implement custom code to handle the krsSpecific parameter
-
+    /**
+     * Optional ToDo for KRS provider: implement custom code to handle the krsSpecific parameter
+     * Example usage:
+     *  const insuranceTier = krsSpecific[tier];
+     *  key.custom.insuranceTier = insuranceTier;
+     */
   }
 
   if (process.config.requesterAuth && process.config.requesterAuth.required) {
