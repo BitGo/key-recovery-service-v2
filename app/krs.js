@@ -124,6 +124,9 @@ exports.provisionKey = co(function *(req) {
     throw utils.ErrorResponse(400, 'email required');
   }
 
+  key.custom = req.body.custom || {};
+  key.custom.created = new Date();
+
   /**
    * Here we handle the krsSpecific parameter
    * This parameter should be an object containing custom data relevant to your KRS policies
@@ -166,9 +169,6 @@ exports.provisionKey = co(function *(req) {
 
   key.userEmail = req.body.userEmail;
   key.notificationURL = req.body.notificationURL;
-
-  key.custom = req.body.custom || {};
-  key.custom.created = new Date();
 
   yield key.save();
 
