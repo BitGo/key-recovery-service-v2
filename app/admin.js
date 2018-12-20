@@ -305,6 +305,10 @@ const handleImportKeys = co(function *(args) {
  * Alternatively, if the key is specified to be an xpub, we would just remove the XLM info and continue as normal
  */
 const formatKeysByType = function(keys, type) {
+  // if using the old format, don't do anything here, just return the keys
+  if (!keys[0].xlmpub) {
+    return keys;
+  }
   const formattedkeys = [];
   _.forEach(keys, function(key) {
     formattedkeys.push({
