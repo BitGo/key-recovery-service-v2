@@ -238,8 +238,6 @@ const saveKeys = co(function *(keys, type) {
     return;
   }
 
-
-
   const keyDocs = keys
     .filter( key => validateKey(key, type))
     .map( key => ({
@@ -279,10 +277,44 @@ const handleImportKeys = co(function *(args) {
     throw new Error('please specify the path to a CSV file containing the public keys to import');
   }
 
-  const keys = JSON.parse(fs.readFileSync(path, { encoding: 'utf8' }));
+  let keys = JSON.parse(fs.readFileSync(path, { encoding: 'utf8' }));
+
+  keys = formatKeysByType(keys, type);
 
   yield saveKeys(keys, type);
 });
+
+/**
+ * This function handles a new type of key-import format
+ * For example, a key can be imported as such:
+ * {
+ *   pub: "xpub20412049182341234"
+ *   xlmpub: "GSLKJASDFJASLFASDFAS"
+ *   signature: "IK/alkjELASJFLAKJSDFLAKSFASDFW=="
+ *   xlmSignature: "KOPASIK------PSDIFAPSDFOAF"
+ *   path: "100"
+ * }
+ * If this key comes in, we can save it either as type xpub or xlm (depending on what the admin specifies on the command line)
+ * If the above key is imported as type 'xlm', we will change it to the following format:
+ * {
+ *   pub: "GSLKJASDFJASLFASDFAS"
+ *   signature: "KOPASIK------PSDIFAPSDFOAF"
+ *   path: "100"
+ * }
+ * Notice that we replaced the pub and signature fields with the XLM info.
+ * Alternatively, if the key is specified to be an xpub, we would just remove the XLM info and continue as normal
+ */
+const formatKeysByType = function(keys, type) {
+  const formattedkeys = [];
+  _.forEach(keys, function(key) {
+    formattedkeys.push({
+      pub: type === 'xlm' ? key.xlmpub : key.pub,
+      signature: type === 'xlm' ? key.xlmSignature : key.signature,
+      path: key.path
+    });
+  })
+  return formattedkeys;
+}
 
 const handleDeriveKey = function(args) {
   try {
