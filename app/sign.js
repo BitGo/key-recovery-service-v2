@@ -116,7 +116,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
 
   _.forEach(recoveryRequest.inputs, function(input, i) {
-    
+
     // Set up chain path: chain paths come from the SDK with a leading /, which is technically not allowed by BIP32
     if (input.chainPath.startsWith('/')) {
       input.chainPath = input.chainPath.slice(1);
@@ -142,7 +142,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
       return;
     }
 
-    // Handle Segwit
+    // Handle Wrapped Segwit
     const redeemScript = new Buffer(input.redeemScript, 'hex');
     if (input.witnessScript) {
       const witnessScript = new Buffer(input.witnessScript, 'hex');
