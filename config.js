@@ -14,6 +14,8 @@ module.exports = {
     tzec: 'xpub',
     xrp: 'xpub',
     txrp: 'xpub',
+    dash: 'xpub',
+    tdash: 'xpub',
     xlm: 'xlm',
     txlm: 'xlm'
   },

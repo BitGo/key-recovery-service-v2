@@ -14,7 +14,10 @@ const utxoNetworks = {
   zec: utxoLib.networks.zcash,
   dash: utxoLib.networks.dash,
   tltc: utxoLib.networks.litecoin,
-  tbtc: utxoLib.networks.testnet
+  tbtc: utxoLib.networks.testnet,
+  tbch: utxoLib.networks.bitcoincashTestnet,
+  tzec: utxoLib.networks.zcashTest,
+  tdash: utxoLib.networks.dashTest,
 };
 
 const coinDecimals = {
@@ -30,7 +33,10 @@ const coinDecimals = {
   teth: 18,
   txrp: 6,
   tltc: 8,
-  txlm: 7
+  txlm: 7,
+  tbch: 8,
+  tzec: 8,
+  tdash: 8,
 };
 
 const TEN = new BN(10);
@@ -60,7 +66,7 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
   let node;
 
   try {
-    node = prova.HDNode.fromBase58(xprv);
+    node = utxoLib.HDNode.fromBase58(xprv);
   } catch (e) {
     throw new Error('invalid private key');
   }
@@ -103,36 +109,49 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   // force override network as we use btc mainnet xpubs for all utxo coins
   backupKeyNode.keyPair.network = network;
 
+  transaction.ins.forEach(function (input, i) {
+    transaction.ins[i].value = recoveryRequest.inputs[i].amount;
+  })
+
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
 
   _.forEach(recoveryRequest.inputs, function(input, i) {
-    const isBech32 = !input.redeemScript;
-    const isSegwit = !!input.witnessScript;
 
-    // chain paths come from the SDK with a leading /, which is technically not allowed by BIP32
+    // Set up chain path: chain paths come from the SDK with a leading /, which is technically not allowed by BIP32
     if (input.chainPath.startsWith('/')) {
       input.chainPath = input.chainPath.slice(1);
     }
 
+    // Derive signing key from chain path
     const derivedHDNode = backupKeyNode.derivePath(input.chainPath);
-
     console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
 
-    if (isBech32) {
+    // Handle BCH
+    if (recoveryRequest.coin === 'bch' || recoveryRequest.coin === 'tbch') {
+      const redeemScript = new Buffer(input.redeemScript, 'hex');
+      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
+      return; // in a Lodash forEach loop, 'return' operates like 'continue' does in a regular javascript loop. It finishes this iteration and moves to the next iteration
+    }
+
+    // Handle Bech32
+    if (!input.redeemScript) {
       const witnessScript = Buffer.from(input.witnessScript, 'hex');
       const witnessScriptHash = utxoLib.crypto.sha256(witnessScript);
       const prevOutScript = utxoLib.script.witnessScriptHash.output.encode(witnessScriptHash);
       txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
-    } else {
-      const redeemScript = new Buffer(input.redeemScript, 'hex');
-
-      if (isSegwit) {
-        const witnessScript = new Buffer(input.witnessScript, 'hex');
-        txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript)
-      } else {
-        txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL);
-      }
+      return;
     }
+
+    // Handle Wrapped Segwit
+    const redeemScript = new Buffer(input.redeemScript, 'hex');
+    if (input.witnessScript) {
+      const witnessScript = new Buffer(input.witnessScript, 'hex');
+      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+      return;
+    }
+
+    // Handle all other requests
+    txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount);
   });
 
   return txBuilder.build().toHex();
@@ -160,7 +179,7 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
-  const backupSigningKey = backupKeyNode.getKey().getPrivateKeyBuffer();
+  const backupSigningKey = backupKeyNode.keyPair.getPrivateKeyBuffer();
 
   transaction.sign(backupSigningKey);
 
