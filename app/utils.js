@@ -3,6 +3,7 @@ const nodemailer = require('nodemailer');
 const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
 const prova = require('prova-lib');
+const utxoLib = require('bitgo-utxo-lib');
 const stellar = require('stellar-base');
 const stellarHd = require('stellar-hd-wallet');
 
@@ -98,7 +99,7 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
 
 exports.deriveChildKey = function(master, derivationPath, type, neuter) {
   if (type === 'xpub' || type === 'xprv') {
-    const masterNode = prova.HDNode.fromBase58(master);
+    const masterNode = utxoLib.HDNode.fromBase58(master);
     const childKey = masterNode.derivePath(derivationPath);
 
     if (neuter) {
