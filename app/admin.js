@@ -8,8 +8,10 @@ const pjson = require('../package.json');
 const fs = require('fs');
 const crypto = require('crypto');
 
-let db, MasterKey, WalletKey;
+const db = require('./db.js');
+const MasterKey = require('./models/masterkey.js');
 const signingTool = require('./sign.js');
+const WalletKey = require('./models/walletkey.js');
 const utils = require('./utils');
 const bitcoinMessage = require('bitcoinjs-message');
 
@@ -103,15 +105,6 @@ setVerificationCommand.addArgument(
     action: 'store',
     nargs: '+',
     help: 'verification information to store with the wallet\'s backup key'
-  }
-);
-
-const recoveryInfoCommand = subparsers.addParser('recoveryInfo', { addHelp: true });
-recoveryInfoCommand.addArgument(
-  ['file'],
-  {
-    action: 'store',
-    help: 'the path to the recovery file that bitgo provided'
   }
 );
 
@@ -375,32 +368,11 @@ const handleVerification = co(function *(args) {
   }
 });
 
-const handleRecoveryInfo = co(function *(args){
-  const json = JSON.parse(fs.readFileSync(args.file));
-  const pub = json.backupKey;
-  const walletkey = yield WalletKey.findOne({ pub });
-  const masterkey = yield MasterKey.findOne({ pub: walletkey.masterKey });
-  json.masterkey = masterkey.pub;
-  json.masterkeypath = masterkey.path;
-  json.walletkeypath = walletkey.path;
-  const filename = args.file.substring(0,args.file.length - 5) + '-prepared.json';
-  console.log('got info... writing file ' + filename);
-  fs.writeFileSync(filename, JSON.stringify(json, null, 2));
-  console.log('done.');
-});
-
-const requireDB = function() {
-  MasterKey = require('./models/masterkey.js');
-  WalletKey = require('./models/walletkey.js');
-  db = require('./db.js');
-}
-
 const run = co(function *(testArgs) {
   const args = parser.parseArgs(testArgs);
 
   switch (args.cmd) {
     case 'import':
-      requireDB();
       yield handleImportKeys(args);
       break;
     case 'sign':
@@ -416,17 +388,11 @@ const run = co(function *(testArgs) {
       handleGenerateHDSeed();
       break;
     case 'verification':
-      requireDB();
       yield handleVerification(args);
       break;
-    case 'recoveryInfo':
-      requireDB();
-      yield handleRecoveryInfo(args);
   }
 
-  if (db && db.connection) {
-    db.connection.close();
-  }
+  db.connection.close();
 });
 
 // For admin script and unit testing of functions

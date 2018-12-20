@@ -186,14 +186,5 @@ exports.provisionKey = co(function *(req) {
     yield notifyEndpoint(key, 'created');
   }
 
-  const response = {
-    masterKey: masterKey.pub,
-    path: key.path,
-    userEmail: key.userEmail,
-    custom: key.custom,
-    masterKeySig: masterKey.signature,
-    pub: key.pub
-  }
-
-  return response;
+  return key;
 });
