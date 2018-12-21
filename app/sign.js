@@ -192,8 +192,13 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
   const rippleKeypairs = require('ripple-keypairs');
   const rippleParse = require('ripple-binary-codec');
 
+  // handle different input formats
+  if (!recoveryRequest.txHex) {
+    recoveryRequest.txHex = recoveryRequest.tx || recoveryRequest.transactionHex;
+  }
+
   const decimals = coinDecimals[recoveryRequest.coin];
-  const transaction = rippleParse.decode(recoveryRequest.tx);
+  const transaction = rippleParse.decode(recoveryRequest.txHex);
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
   const outputs = [{
