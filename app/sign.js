@@ -90,7 +90,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     throw new Error(`Unsupported coin: ${recoveryRequest.coin}`);
   }
 
-  const transaction = utxoLib.Transaction.fromHex(recoveryRequest.transactionHex, network);
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+  const transaction = utxoLib.Transaction.fromHex(txHex, network);
 
   const outputs = transaction.outs.map(out => ({
     address: utxoLib.address.fromOutputScript(out.script, network),
@@ -160,7 +161,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   const EthTx = require('ethereumjs-tx');
 
-  const transaction = new EthTx(recoveryRequest.tx);
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+  const transaction = new EthTx(txHex);
   const decimals = coinDecimals[recoveryRequest.coin];
 
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
@@ -192,8 +194,10 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
   const rippleKeypairs = require('ripple-keypairs');
   const rippleParse = require('ripple-binary-codec');
 
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+
   const decimals = coinDecimals[recoveryRequest.coin];
-  const transaction = rippleParse.decode(recoveryRequest.tx);
+  const transaction = rippleParse.decode(txHex);
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
   const outputs = [{
@@ -212,9 +216,9 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.keyPair.getPublicKeyBuffer().toString('hex'));
   const privateKeyHex = backupKeyNode.keyPair.getPrivateKeyBuffer().toString('hex');
-  const cosignedTx = utils.signXrpWithPrivateKey(recoveryRequest.txHex, privateKeyHex, { signAs: backupAddress });
+  const cosignedTx = utils.signXrpWithPrivateKey(txHex, privateKeyHex, { signAs: backupAddress });
 
-  return rippleApi.combine([ recoveryRequest.txHex, cosignedTx.signedTransaction ]).signedTransaction;
+  return rippleApi.combine([ txHex, cosignedTx.signedTransaction ]).signedTransaction;
 };
 
 const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
@@ -228,7 +232,8 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
 
   const decimals = coinDecimals[recoveryRequest.coin];
 
-  const transaction = new stellar.Transaction(recoveryRequest.tx);
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+  const transaction = new stellar.Transaction(txHex);
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
   if (transaction.operations.length !== 1) {
@@ -271,7 +276,8 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
 const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
   const EthTx = require('ethereumjs-tx');
 
-  const transaction = new EthTx(recoveryRequest.tx);
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+  const transaction = new EthTx(txHex);
 
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
   const txData = transaction.data;
@@ -325,6 +331,23 @@ const parseKey = function(rawkey, coin, path) {
   }
   // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
   return rawkey;
+}
+
+/**
+ Not all recoveryRequest files are formatted the same. Sometimes they have 'tx', 'txHex', or 'transactionHex'
+ This function gets and gets and returns the transaction hex in all of these cases
+ */
+const getTransactionHexFromRequest = function(recoveryRequest) {
+  if (recoveryRequest.txHex){
+    return recoveryRequest.txHex
+  }
+  if (recoveryRequest.transactionHex){
+    return recoveryRequest.transactionHex
+  }
+  if (recoveryRequest.tx){
+    return recoveryRequest.tx
+  }
+  throw new Error("The recovery request did not provide a transaction hex");
 }
 
 const handleSign = function(args) {
