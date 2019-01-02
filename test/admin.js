@@ -206,6 +206,7 @@ describe('Offline Admin Tool', function() {
         path: '0'
       };
       const keyList = [key];
+      admin.requireDB();
       yield admin.saveKeys(keyList, 'xpub');
       const foundKey = yield MasterKey.findOne({ pub: xpub });
       foundKey.should.have.property('signature');
