@@ -337,13 +337,13 @@ const parseKey = function(rawkey, coin, path) {
  This function gets and gets and returns the transaction hex in all of these cases
  */
 const getTransactionHexFromRequest = function(recoveryRequest) {
-  if( recoveryRequest.tx ){
+  if (recoveryRequest.tx){
     return recoveryRequest.tx
   }
-  if (recoveryRequest.txHex ){
+  if (recoveryRequest.txHex){
     return recoveryRequest.txHex
   }
-  if (recoveryRequest.transactionHex ){
+  if (recoveryRequest.transactionHex){
     return recoveryRequest.transactionHex
   }
   throw new Error("The recovery request did not provide a transaction hex");
