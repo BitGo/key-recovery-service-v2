@@ -466,4 +466,4 @@ const run = co(function *(testArgs) {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateKey, saveKeys, db , requireDB };
+module.exports = { run, validateKey, saveKeys, db };
