@@ -90,7 +90,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     throw new Error(`Unsupported coin: ${recoveryRequest.coin}`);
   }
 
-  const transaction = utxoLib.Transaction.fromHex(recoveryRequest.transactionHex, network);
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+  const transaction = utxoLib.Transaction.fromHex(txHex, network);
 
   const outputs = transaction.outs.map(out => ({
     address: utxoLib.address.fromOutputScript(out.script, network),
@@ -337,14 +338,14 @@ const parseKey = function(rawkey, coin, path) {
  This function gets and gets and returns the transaction hex in all of these cases
  */
 const getTransactionHexFromRequest = function(recoveryRequest) {
-  if (recoveryRequest.tx){
-    return recoveryRequest.tx
-  }
   if (recoveryRequest.txHex){
     return recoveryRequest.txHex
   }
   if (recoveryRequest.transactionHex){
     return recoveryRequest.transactionHex
+  }
+  if (recoveryRequest.tx){
+    return recoveryRequest.tx
   }
   throw new Error("The recovery request did not provide a transaction hex");
 }
