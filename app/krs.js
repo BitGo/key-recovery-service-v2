@@ -197,3 +197,40 @@ exports.provisionKey = co(function *(req) {
 
   return response;
 });
+
+/**
+ * Checks to see if the given public key belongs to a user wallet.
+ * @param req: request object
+ */
+exports.isUserKey = co(function *(req) {
+
+  const pub = req.body.pub;
+
+  if (!pub) {
+    throw utils.ErrorResponse(400, 'pub is required');
+  }
+
+  if (process.config.requesterAuth && process.config.requesterAuth.required) {
+    if (!req.body.requesterId && !req.body.requesterSecret) {
+      throw utils.ErrorResponse(401, 'this krs requires you to send a requesterId and requesterSecret to get a key');
+    }
+    if (!process.config.requesterAuth.clients[req.body.requesterId] ||
+        process.config.requesterAuth.clients[req.body.requesterId] !== req.body.requesterSecret) {
+      throw utils.ErrorResponse(401, 'invalid requesterSecret');
+    }
+  }
+
+  const key = yield WalletKey.findOne({ pub });
+
+  if (!key) {
+    throw utils.ErrorResponse(404, 'Not found');
+  }
+
+  const response = {
+    pub: key.pub,
+    isWalletKey: true,
+  }
+
+  return response;
+
+});

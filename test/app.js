@@ -134,4 +134,40 @@ describe('Application Server', function() {
         })
     })
   });
+
+  describe('Search for existing key', function() {
+    it('should return a 400 if no key is provided specified', function () {
+      return agent
+        .post('/isUserKey')
+        .send({})
+        .then(function (res) {
+          res.status.should.eql(400);
+        });
+    });
+
+    it('should return a 404 if not found', function () {
+      return agent
+        .post('/isUserKey')
+        .send({
+          pub: 'NOTAREALKEY'
+        })
+        .then(function (res) {
+          res.status.should.eql(404);
+        });
+    });
+
+    it('should return a 200 success the key is found', function() {
+      agent
+        .post('/isUserKey')
+        .send({
+          pub: 'GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7'
+        })
+        .end(function (err, res) {
+          res.status.should.equal(200);
+          should.exist(res.body.pub);
+          res.body.pub.should.equal('GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7');
+        })
+    })
+
+  });
 });

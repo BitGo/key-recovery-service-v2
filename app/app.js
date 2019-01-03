@@ -30,5 +30,7 @@ module.exports = function(args) {
   });
 
   app.post('/key', utils.promiseWrapper(krs.provisionKey));
+
+  app.post('/isUserKey', utils.promiseWrapper(krs.isUserKey));
   return app;
 };
