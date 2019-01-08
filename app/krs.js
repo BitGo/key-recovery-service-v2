@@ -221,14 +221,18 @@ exports.isUserKey = co(function *(req) {
   }
 
   const key = yield WalletKey.findOne({ pub });
+  let response;
 
   if (!key) {
-    throw utils.ErrorResponse(404, 'Not found');
-  }
-
-  const response = {
-    pub: key.pub,
-    isWalletKey: true,
+    response = {
+      pub: pub,
+      isWalletKey: false,
+    }
+  } else {
+    response = {
+      pub: key.pub,
+      isWalletKey: true,
+    }
   }
 
   return response;

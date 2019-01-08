@@ -145,18 +145,22 @@ describe('Application Server', function() {
         });
     });
 
-    it('should return a 404 if not found', function () {
+    it('should return a 200 success if not found, but have isUserKey set to false', function () {
       return agent
         .post('/isUserKey')
         .send({
           pub: 'NOTAREALKEY'
         })
         .then(function (res) {
-          res.status.should.eql(404);
+          res.status.should.eql(200);
+          should.exist(res.body.pub);
+          should.exist(res.body.isWalletKey);
+          res.body.pub.should.equal('NOTAREALKEY');
+          res.body.isWalletKey.should.equal(false);
         });
     });
 
-    it('should return a 200 success the key is found', function() {
+    it('should return a 200 success if the key is found, and have isUserKey set to true', function() {
       agent
         .post('/isUserKey')
         .send({
@@ -166,6 +170,7 @@ describe('Application Server', function() {
           res.status.should.equal(200);
           should.exist(res.body.pub);
           res.body.pub.should.equal('GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7');
+          res.body.isWalletKey.should.equal(true);
         })
     })
 
