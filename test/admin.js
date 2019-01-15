@@ -224,10 +224,15 @@ describe('Offline Admin Tool', function() {
       key.save();
     });
 
-    it('should fail to retrieve verification info on a non-existent key', function() {
-      admin.run(['verification', 'get', 'xpub6ARXqCvahM4dyWYDSPZMiii32yt3DTETyWCLDRZpQR4zpU9q6VmBKySA91hsLjofoUjdKdqPCcC54mbpJBmGNsNKM1szecH56p7Vk1byadR'])
-        .should.eventually.throw();
-    });
+    it('should fail to retrieve verification info on a non-existent key', co(function *() {
+      let error = null;
+      try {
+        yield admin.run(['verification', 'get', 'xpub6ARXqCvahM4dyWYDSPZMiii32yt3DTETyWCLDRZpQR4zpU9q6VmBKySA91hsLjofoUjdKdqPCcC54mbpJBmGNsNKM1szecH56p7Vk1byadR'])
+      } catch(err) {
+        error = err;
+      }
+      should.exist(error);
+    }));
 
     it('should retrieve verification info on a key', function() {
       admin.run(['verification', 'get', 'xpub6AHA9hZDN11k2ijHMeS5QqHx2KP9aMBRhTDqANMnwVtdyw2TDYRmF8PjpvwUFcL1Et8Hj59S3gTSMcUQ5gAqTz3Wd8EsMTmF3DChhqPQBnU'])

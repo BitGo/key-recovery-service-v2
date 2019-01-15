@@ -1,0 +1,14 @@
+{
+  "txInfo": {
+    "expireTime": 1548022569,
+    "contractSequenceId": 10,
+    "operationHash": "0x9a649beb113f80c18212d0d7d34ee28db157cd79773aac84722d9bd862618971",
+    "gasLimit": 500000,
+    "gasPrice": 20000000000,
+    "recipient": {
+      "address": "0x8d743d13dc57dae9169428356ba6be35db2a7fc1",
+      "amount": "200000000000000000"
+    },
+    "clientSignature": "0x4b23b70b49001f7f601d9a926e84284f64044415440affa4478ac72b80df9a0753f56d1f6afc3375b9bee9fbaca38691d89bf0047696d37fb41a3d532ab2183e1b"
+  }
+}
