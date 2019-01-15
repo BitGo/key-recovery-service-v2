@@ -158,6 +158,10 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   return txBuilder.build().toHex();
 };
 
+const handleHalfSignEth = function(recoveryRequest, key, skipConfirm) {
+  return utils.halfSignEthTransaction(recoveryRequest.coin, recoveryRequest.txPrebuild, key);
+}
+
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   const EthTx = require('ethereumjs-tx');
 
@@ -330,6 +334,11 @@ const parseKey = function(rawkey, coin, path) {
 
   }
   // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
+  if(path) {
+    let node = utxoLib.HDNode.fromPrivateKeyBuffer(Buffer.from(rawkey, 'hex'));
+    node = node.derivePath(path);
+    return node.toBase58();
+  }
   return rawkey;
 }
 
@@ -363,11 +372,15 @@ const handleSign = function(args) {
 
   const key = parseKey(args.key, coin, args.path);
 
-  let txHex;
+  let txHex, halfSignedInfo;
 
   switch (coin) {
     case 'eth': case 'teth':
-      txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
+      if (!!recoveryRequest.txPrebuild) {
+        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm);
+      } else {
+        txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
+      }
       break;
     case 'xrp': case 'txrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
@@ -375,24 +388,40 @@ const handleSign = function(args) {
     case 'xlm': case'txlm':
       txHex = handleSignXlm(recoveryRequest, key, args.confirm);
       break;
-    case 'erc20':
-      txHex = handleSignErc20(recoveryRequest, key, args.confirm);
+    case 'erc20': case 'terc20': case 'terc': case 'erc':
+      if (!!recoveryRequest.txPrebuild) {
+        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm);
+      } else {
+        txHex = handleSignErc20(recoveryRequest, key, args.confirm);
+      }
       break;
     default:
       txHex = handleSignUtxo(recoveryRequest, key, args.confirm);
       break;
   }
 
-  console.log(`Signed transaction hex: ${txHex}`);
+  if(!!txHex) {
+    console.log(`Signed transaction hex: ${txHex}`);
+  }
 
   const filename = file.replace(/\.[^/.]+$/, '') + '.signed.json';
   console.log(`Writing signed transaction to file: ${filename}`);
 
-  const finalRecovery = _.pick(recoveryRequest, ['backupKey', 'coin', 'recoveryAmount']);
-  finalRecovery.txHex = txHex;
+  let finalRecovery;
 
-  fs.writeFileSync(filename, JSON.stringify(finalRecovery, null, 2));
-  console.log('Done');
+  if (!!txHex) {
+    finalRecovery = _.pick(recoveryRequest, ['backupKey', 'coin', 'recoveryAmount']);
+    finalRecovery.txHex = txHex;
+  } else {
+    finalRecovery = halfSignedInfo;
+  }
+
+  const fileStr = JSON.stringify(finalRecovery, null, 2);
+  if(!args.noWrite) {
+    fs.writeFileSync(filename, fileStr);
+    console.log('Done');
+  }
+  return finalRecovery;
 };
 
 module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, parseKey };
