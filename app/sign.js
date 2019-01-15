@@ -408,7 +408,7 @@ const handleSign = function(args) {
   console.log(`Writing signed transaction to file: ${filename}`);
 
   let finalRecovery;
-
+  
   if (txHex) {
     finalRecovery = _.pick(recoveryRequest, ['backupKey', 'coin', 'recoveryAmount']);
     finalRecovery.txHex = txHex;
