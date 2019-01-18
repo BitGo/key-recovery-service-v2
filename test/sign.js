@@ -110,4 +110,26 @@ describe('Offline Signing Tool', function() {
       const xprv = signingTool.parseKey(key,'eth',path);
       xprv.should.equal('xprv9u4GesLhZXFMtAFY2vT1QpXQrgJHRcbTKnw2J1Bqm2m2HpDztvS7D3AwF69fYZnuBJyJQm4v8hegzKY3rLCmBgujbZ3sFRzzLT42Z9oTqBt');
   });
+
+  it('half-signs an ETH transaction', function() {
+    const key = 'xprv9s21ZrQH143K2VPbcq9NwP51S43YX67rUG834oU8BvHgvSayfp9DRuPs6xfKThGbHbdaiGNWdyS5LmTc9GdCVCpNUs6wfyaLukHsvVB8PwP';
+    const file = './test/transactions/unsigned-teth.json';
+    const expectedOut = JSON.parse(fs.readFileSync('./test/transactions/half-signed-teth.json'));
+    const args = { file, key, noWrite: true }
+    const outFile = signingTool.handleSign(args);
+    should(outFile.txInfo.sequenceId).not.be.ok();
+    delete outFile.txInfo.sequenceId;
+    outFile.should.deepEqual(expectedOut);
+  });
+
+  it('half-signs an ERC-20 transaction', function() {
+    const key = 'xprv9s21ZrQH143K2VPbcq9NwP51S43YX67rUG834oU8BvHgvSayfp9DRuPs6xfKThGbHbdaiGNWdyS5LmTc9GdCVCpNUs6wfyaLukHsvVB8PwP';
+    const file = './test/transactions/unsigned-terc.json';
+    const expectedOut = JSON.parse(fs.readFileSync('./test/transactions/half-signed-terc.json'));
+    const args = { file, key, noWrite: true }
+    const outFile = signingTool.handleSign(args);
+    should(outFile.txInfo.sequenceId).not.be.ok();
+    delete outFile.txInfo.sequenceId;
+    outFile.should.deepEqual(expectedOut);
+  });
 });
