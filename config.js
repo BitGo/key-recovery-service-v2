@@ -17,7 +17,9 @@ module.exports = {
     dash: 'xpub',
     tdash: 'xpub',
     xlm: 'xlm',
-    txlm: 'xlm'
+    txlm: 'xlm',
+    btg: 'xpub',
+    tbtg: 'xpub'
   },
   "host": "0.0.0.0",
   "port": 6833,

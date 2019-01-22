@@ -18,6 +18,8 @@ const utxoNetworks = {
   tbch: utxoLib.networks.bitcoincashTestnet,
   tzec: utxoLib.networks.zcashTest,
   tdash: utxoLib.networks.dashTest,
+  btg: utxoLib.networks.bitcoingold,
+  tbtg: utxoLib.networks.bitcoingold
 };
 
 const coinDecimals = {
@@ -37,6 +39,8 @@ const coinDecimals = {
   tbch: 8,
   tzec: 8,
   tdash: 8,
+  btg: 8,
+  tbtg: 8
 };
 
 const TEN = new BN(10);
