@@ -18,6 +18,8 @@ module.exports = {
     txrp: 'xpub',
     dash: 'xpub',
     tdash: 'xpub',
+    bsv: 'xpub',
+    tbsv: 'xpub',
     xlm: 'xlm',
     txlm: 'xlm'
   },
