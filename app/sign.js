@@ -44,6 +44,7 @@ const coinDecimals = {
 };
 
 const TEN = new BN(10);
+const BCH_COINS = ['bch', 'tbch', 'bsv', 'tbsv'];
 
 const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm) {
   console.log('Sign Recovery Transaction');
@@ -132,7 +133,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
 
     // Handle BCH
-    if (recoveryRequest.coin === 'bch' || recoveryRequest.coin === 'tbch' || recoveryRequest.coin === 'bsv' || recoveryRequest.coin === 'tbsv') {
+    if (BCH_COINS.includes(recoveryRequest.coin)) {
       const redeemScript = new Buffer(input.redeemScript, 'hex');
       txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
       return; // in a Lodash forEach loop, 'return' operates like 'continue' does in a regular javascript loop. It finishes this iteration and moves to the next iteration
