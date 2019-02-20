@@ -1,0 +1,21 @@
+{
+  "xpub": "xpub661MyMwAqRbcEyU4irgPJX1jz5t2vYqhqV3dsBsjkFpfoEv8DMTTyhiLxFQZ1DWfSqXP6c1Tpc4BHDw1vqHPQ3Gx8rrgvF4amNqiZtKEPZW",
+  "backupKey": "xpub661MyMwAqRbcEyU4irgPJX1jz5t2vYqhqV3dsBsjkFpfoEv8DMTTyhiLxFQZ1DWfSqXP6c1Tpc4BHDw1vqHPQ3Gx8rrgvF4amNqiZtKEPZW",
+  "userEmail": "danny@bitgo.com",
+  "coin": "teth",
+  "txPrebuild": {
+    "nextContractSequenceId": 10,
+    "recipients": [
+      {
+        "address": "0x8d743d13dc57dae9169428356ba6be35db2a7fc1",
+        "amount": "200000000000000000"
+      }
+    ],
+    "gasPrice": 20000000000,
+    "gasLimit": 500000,
+    "expireTime": 1548022569
+  },
+  "custom": {
+    "message": "Recovery initiated by BitGo on behalf of user"
+  }
+}
