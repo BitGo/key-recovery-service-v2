@@ -10,5 +10,6 @@
       "amount": "200000000000000000"
     },
     "clientSignature": "0x4b23b70b49001f7f601d9a926e84284f64044415440affa4478ac72b80df9a0753f56d1f6afc3375b9bee9fbaca38691d89bf0047696d37fb41a3d532ab2183e1b"
-  }
+  },
+  "coin": "teth"
 }
