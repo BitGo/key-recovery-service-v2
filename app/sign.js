@@ -13,11 +13,13 @@ const utxoNetworks = {
   btc: utxoLib.networks.bitcoin,
   ltc: utxoLib.networks.litecoin,
   bch: utxoLib.networks.bitcoincash,
+  bsv: utxoLib.networks.bitcoinsv,
   zec: utxoLib.networks.zcash,
   dash: utxoLib.networks.dash,
   tltc: utxoLib.networks.litecoin,
   tbtc: utxoLib.networks.testnet,
   tbch: utxoLib.networks.bitcoincashTestnet,
+  tbsv: utxoLib.networks.bitcoinsvTestnet,
   tzec: utxoLib.networks.zcashTest,
   tdash: utxoLib.networks.dashTest,
 };
@@ -27,6 +29,7 @@ const coinDecimals = {
   eth: 18,
   xrp: 6,
   bch: 8,
+  bsv: 8,
   ltc: 8,
   zec: 8,
   dash: 8,
@@ -37,10 +40,12 @@ const coinDecimals = {
   tltc: 8,
   txlm: 7,
   tbch: 8,
+  tbsv: 8,
   tzec: 8,
   tdash: 8,
 };
 
+const BCH_COINS = ['bch', 'tbch', 'bsv', 'tbsv'];
 const TEN = new BN(10);
 
 const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm) {
@@ -130,7 +135,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
 
     // Handle BCH
-    if (recoveryRequest.coin === 'bch' || recoveryRequest.coin === 'tbch') {
+    if (BCH_COINS.includes(recoveryRequest.coin)) {
       const redeemScript = new Buffer(input.redeemScript, 'hex');
       txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
       return; // in a Lodash forEach loop, 'return' operates like 'continue' does in a regular javascript loop. It finishes this iteration and moves to the next iteration
