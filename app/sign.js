@@ -6,6 +6,8 @@ const BN = require('bignumber.js');
 const prompt = require('prompt-sync')();
 const utils = require('./utils');
 const bip39 = require('bip39');
+const bitgojs = require('bitgo');
+let bitgo;
 
 const utxoNetworks = {
   btc: utxoLib.networks.bitcoin,
@@ -158,8 +160,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   return txBuilder.build().toHex();
 };
 
-const handleHalfSignEth = function(recoveryRequest, key, skipConfirm) {
-  return utils.halfSignEthTransaction(recoveryRequest.coin, recoveryRequest.txPrebuild, key);
+const handleHalfSignEth = function(recoveryRequest, key, skipConfirm, basecoin) {
+  return utils.halfSignEthTransaction(basecoin, recoveryRequest, key);
 }
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
@@ -244,13 +246,13 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     throw new Error('Recovery transaction is trying to perform multiple operations - aborting');
   }
 
-  if (transaction.operations[0].type !== 'payment') {
-    throw new Error('Recovery transaction is not a payment transaction - aborting');
+  if (transaction.operations[0].type !== 'payment' && transaction.operations[0].type !== 'createAccount') {
+    throw new Error('Recovery transaction is not a payment or createAccount transaction - aborting');
   }
 
   const outputs = [{
     address: transaction.operations[0].destination,
-    amount: transaction.operations[0].amount
+    amount: transaction.operations[0].amount || transaction.operations[0].startingBalance
   }];
 
   confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
@@ -363,7 +365,14 @@ const handleSign = function(args) {
   const file = args.file;
 
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
-  const coin = recoveryRequest.coin;
+  let coin = recoveryRequest.coin;
+
+  if (coin.startsWith('t')) {
+    bitgo = new bitgojs.BitGo({ env: 'test' });
+  } else {
+    console.log('prod');
+    bitgo = new bitgojs.BitGo({ env: 'prod' });
+  }
 
   if(!args.key) {
     console.log("\nEnter your private key for signing.\nEnter an xprv or 24 words.\nIf entering 24 words, separate each word with only a comma and no spaces.\n");
@@ -374,26 +383,26 @@ const handleSign = function(args) {
 
   let txHex, halfSignedInfo;
 
-  switch (coin) {
-    case 'eth': case 'teth':
+  // If a tokenContractAddress was provided, use that. Otherwise use the named coin
+  const basecoin = recoveryRequest.tokenContractAddress ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin);
+
+  switch (basecoin.getFamily()) {
+    case 'eth':
       if (recoveryRequest.txPrebuild) {
-        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm);
+        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm, basecoin);
       } else {
-        txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
+        if (coin.getChain() === 'eth' || coin.getChain() === 'teth') {
+          txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
+        } else {
+          txHex = handleSignErc20(recoveryRequest, key, args.confirm, basecoin);
+        }
       }
       break;
-    case 'xrp': case 'txrp':
+    case 'xrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
       break;
-    case 'xlm': case'txlm':
+    case 'xlm':
       txHex = handleSignXlm(recoveryRequest, key, args.confirm);
-      break;
-    case 'erc20': case 'terc20': case 'terc': case 'erc':
-      if (recoveryRequest.txPrebuild) {
-        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm);
-      } else {
-        txHex = handleSignErc20(recoveryRequest, key, args.confirm);
-      }
       break;
     default:
       txHex = handleSignUtxo(recoveryRequest, key, args.confirm);
@@ -408,7 +417,7 @@ const handleSign = function(args) {
   console.log(`Writing signed transaction to file: ${filename}`);
 
   let finalRecovery;
-  
+
   if (txHex) {
     finalRecovery = _.pick(recoveryRequest, ['backupKey', 'coin', 'recoveryAmount']);
     finalRecovery.txHex = txHex;
