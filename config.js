@@ -12,6 +12,8 @@ module.exports = {
     tltc: 'xpub',
     bch: 'xpub',
     tbch: 'xpub',
+    bsv: 'xpub',
+    tbsv: 'xpub',
     zec: 'xpub',
     tzec: 'xpub',
     xrp: 'xpub',
