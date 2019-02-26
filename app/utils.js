@@ -6,8 +6,6 @@ const prova = require('prova-lib');
 const utxoLib = require('bitgo-utxo-lib');
 const stellar = require('stellar-base');
 const stellarHd = require('stellar-hd-wallet');
-const bitgojs = require('bitgo');
-const bitgo = new bitgojs.BitGo({});
 const rippleParse = require('ripple-binary-codec');
 const rippleKeypairs = require('ripple-keypairs');
 
@@ -172,8 +170,8 @@ exports.signXrpWithPrivateKey = function(txHex, privateKey, options) {
   };
 };
 
-exports.halfSignEthTransaction = function(coin, txPrebuild, key) {
-  const basecoin = bitgo.coin(coin);
+exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
+  const txPrebuild = recoveryRequest.txPrebuild;
   const obj = {
     prv: key,
     gasLimit: txPrebuild.gasLimit,
@@ -189,5 +187,9 @@ exports.halfSignEthTransaction = function(coin, txPrebuild, key) {
   delete outFile.txInfo.recipients;
   outFile.txInfo.clientSignature = outFile.txInfo.signature;
   delete outFile.txInfo.signature;
+  outFile.coin = recoveryRequest.coin;
+  if (recoveryRequest.tokenContractAddress) {
+    outFile.tokenContractAddress = recoveryRequest.tokenContractAddress;
+  }
   return outFile;
 }

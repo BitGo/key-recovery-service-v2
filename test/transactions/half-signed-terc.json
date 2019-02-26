@@ -10,5 +10,7 @@
       "amount": "500"
     },
     "clientSignature": "0x6951133fcd35483147b61bcc0d5aaba2a8725686875e84687e6f4d173aadd1951072c8f78dc7b7aa79a679eea592d9a4843e72995f6de4c9210e76b16f37634b1c"
-  }
+  },
+  "coin": "terc",
+  "tokenContractAddress": "0x945ac907cf021a6bcd07852bb3b8c087051706a9"
 }

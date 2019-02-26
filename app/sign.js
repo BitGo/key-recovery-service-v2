@@ -6,16 +6,20 @@ const BN = require('bignumber.js');
 const prompt = require('prompt-sync')();
 const utils = require('./utils');
 const bip39 = require('bip39');
+const bitgojs = require('bitgo');
+let bitgo;
 
 const utxoNetworks = {
   btc: utxoLib.networks.bitcoin,
   ltc: utxoLib.networks.litecoin,
   bch: utxoLib.networks.bitcoincash,
+  bsv: utxoLib.networks.bitcoinsv,
   zec: utxoLib.networks.zcash,
   dash: utxoLib.networks.dash,
   tltc: utxoLib.networks.litecoin,
   tbtc: utxoLib.networks.testnet,
   tbch: utxoLib.networks.bitcoincashTestnet,
+  tbsv: utxoLib.networks.bitcoinsvTestnet,
   tzec: utxoLib.networks.zcashTest,
   tdash: utxoLib.networks.dashTest,
 };
@@ -25,6 +29,7 @@ const coinDecimals = {
   eth: 18,
   xrp: 6,
   bch: 8,
+  bsv: 8,
   ltc: 8,
   zec: 8,
   dash: 8,
@@ -35,10 +40,12 @@ const coinDecimals = {
   tltc: 8,
   txlm: 7,
   tbch: 8,
+  tbsv: 8,
   tzec: 8,
   tdash: 8,
 };
 
+const BCH_COINS = ['bch', 'tbch', 'bsv', 'tbsv'];
 const TEN = new BN(10);
 
 const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm) {
@@ -128,7 +135,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
 
     // Handle BCH
-    if (recoveryRequest.coin === 'bch' || recoveryRequest.coin === 'tbch') {
+    if (BCH_COINS.includes(recoveryRequest.coin)) {
       const redeemScript = new Buffer(input.redeemScript, 'hex');
       txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
       return; // in a Lodash forEach loop, 'return' operates like 'continue' does in a regular javascript loop. It finishes this iteration and moves to the next iteration
@@ -158,8 +165,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   return txBuilder.build().toHex();
 };
 
-const handleHalfSignEth = function(recoveryRequest, key, skipConfirm) {
-  return utils.halfSignEthTransaction(recoveryRequest.coin, recoveryRequest.txPrebuild, key);
+const handleHalfSignEth = function(recoveryRequest, key, skipConfirm, basecoin) {
+  return utils.halfSignEthTransaction(basecoin, recoveryRequest, key);
 }
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
@@ -244,13 +251,13 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     throw new Error('Recovery transaction is trying to perform multiple operations - aborting');
   }
 
-  if (transaction.operations[0].type !== 'payment') {
-    throw new Error('Recovery transaction is not a payment transaction - aborting');
+  if (transaction.operations[0].type !== 'payment' && transaction.operations[0].type !== 'createAccount') {
+    throw new Error('Recovery transaction is not a payment or createAccount transaction - aborting');
   }
 
   const outputs = [{
     address: transaction.operations[0].destination,
-    amount: transaction.operations[0].amount
+    amount: transaction.operations[0].amount || transaction.operations[0].startingBalance
   }];
 
   confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
@@ -363,7 +370,14 @@ const handleSign = function(args) {
   const file = args.file;
 
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
-  const coin = recoveryRequest.coin;
+  let coin = recoveryRequest.coin;
+
+  if (coin.startsWith('t')) {
+    bitgo = new bitgojs.BitGo({ env: 'test' });
+  } else {
+    console.log('prod');
+    bitgo = new bitgojs.BitGo({ env: 'prod' });
+  }
 
   if(!args.key) {
     console.log("\nEnter your private key for signing.\nEnter an xprv or 24 words.\nIf entering 24 words, separate each word with only a comma and no spaces.\n");
@@ -374,26 +388,26 @@ const handleSign = function(args) {
 
   let txHex, halfSignedInfo;
 
-  switch (coin) {
-    case 'eth': case 'teth':
+  // If a tokenContractAddress was provided, use that. Otherwise use the named coin
+  const basecoin = recoveryRequest.tokenContractAddress ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin);
+
+  switch (basecoin.getFamily()) {
+    case 'eth':
       if (recoveryRequest.txPrebuild) {
-        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm);
+        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm, basecoin);
       } else {
-        txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
+        if (coin.getChain() === 'eth' || coin.getChain() === 'teth') {
+          txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
+        } else {
+          txHex = handleSignErc20(recoveryRequest, key, args.confirm, basecoin);
+        }
       }
       break;
-    case 'xrp': case 'txrp':
+    case 'xrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
       break;
-    case 'xlm': case'txlm':
+    case 'xlm':
       txHex = handleSignXlm(recoveryRequest, key, args.confirm);
-      break;
-    case 'erc20': case 'terc20': case 'terc': case 'erc':
-      if (recoveryRequest.txPrebuild) {
-        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm);
-      } else {
-        txHex = handleSignErc20(recoveryRequest, key, args.confirm);
-      }
       break;
     default:
       txHex = handleSignUtxo(recoveryRequest, key, args.confirm);
@@ -408,7 +422,7 @@ const handleSign = function(args) {
   console.log(`Writing signed transaction to file: ${filename}`);
 
   let finalRecovery;
-  
+
   if (txHex) {
     finalRecovery = _.pick(recoveryRequest, ['backupKey', 'coin', 'recoveryAmount']);
     finalRecovery.txHex = txHex;
