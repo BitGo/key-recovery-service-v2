@@ -168,7 +168,7 @@ exports.provisionKey = co(function *(req) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
-        'Information about your BitGo backup key',
+        'Digital Asset Services - Key Registration',
         'newkeytemplate',
         {
           pub: key.pub,
