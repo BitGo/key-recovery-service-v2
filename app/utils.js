@@ -73,12 +73,15 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
     return Q();
   }
 
+  const tags = (Array.isArray(process.config.mail.tags) ? process.config.mail.tags : []);
+
   // setup e-mail data with unicode symbols
   var mailOptions = {
     from: process.config.mail.fromemail,
     to: toEmail,
     subject: subject, // Subject line
-    attachments: attachments
+    attachments: attachments,
+    headers: { 'X-Mailgun-Tag' : tags }
   };
 
   mailOptions.html = jsrender.templates(`./app/templates/${template}.html`).render(templateParams);

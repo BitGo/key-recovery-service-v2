@@ -38,7 +38,8 @@ module.exports = {
     "auth": {
       "user": process.env.MAILGUN_USER,
       "pass": process.env.MAILGUN_PASS
-    }
+    },
+    "tags": ["This is not the tag you're looking for" , "Outa gouta, Solo?" , "It’s a trap!"]
   },
   "requesterAuth": {
     "required": false,
