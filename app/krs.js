@@ -171,13 +171,8 @@ exports.provisionKey = co(function *(req) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
-<<<<<<< HEAD
         'Protect your backup key now',
-        'newkeytemplate',
-=======
-        'Digital Asset Services - Key Registration',
         (existingUser? 'existingUserNewKeyTemplate' : 'newkeytemplate'),
->>>>>>> feature/existing_user_email_template
         {
           pub: key.pub,
           servicename: process.config.name,
