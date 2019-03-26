@@ -168,7 +168,7 @@ exports.provisionKey = co(function *(req) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
-        'Digital Asset Services - Key Registration',
+        'Protect your backup key now',
         'newkeytemplate',
         {
           pub: key.pub,
