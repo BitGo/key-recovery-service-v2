@@ -164,12 +164,20 @@ exports.provisionKey = co(function *(req) {
 
   yield masterKey.update({ $inc: { keyCount: 1 } });
 
+  // Check if the user is new or existing via their email
+  let existingUser = isExistingUser(key.userEmail);
+
   if (!req.body.disableKRSEmail && !process.config.disableAllKRSEmail) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
+<<<<<<< HEAD
         'Protect your backup key now',
         'newkeytemplate',
+=======
+        'Digital Asset Services - Key Registration',
+        (existingUser? 'existingUserNewKeyTemplate' : 'newkeytemplate'),
+>>>>>>> feature/existing_user_email_template
         {
           pub: key.pub,
           servicename: process.config.name,
@@ -238,3 +246,58 @@ exports.isUserKey = co(function *(req) {
   return response;
 
 });
+
+
+/**
+ * Checks to see if the given email  belongs to a user.
+ * @param req: request object
+ */
+exports.isUser = co(function *(req) {
+
+  const email = req.body.email;
+
+  if (!email) {
+    throw utils.ErrorResponse(400, 'email is required');
+  }
+
+  if (process.config.requesterAuth && process.config.requesterAuth.required) {
+    if (!req.body.requesterId && !req.body.requesterSecret) {
+      throw utils.ErrorResponse(401, 'this krs requires you to send a requesterId and requesterSecret to get a key');
+    }
+    if (!process.config.requesterAuth.clients[req.body.requesterId] ||
+        process.config.requesterAuth.clients[req.body.requesterId] !== req.body.requesterSecret) {
+      throw utils.ErrorResponse(401, 'invalid requesterSecret');
+    }
+  }
+
+  const key = yield WalletKey.findOne({ userEmail: email });
+  let response;
+
+  if (!key) {
+    response = {
+      email: email,
+      isUser: false,
+    }
+  } else {
+    response = {
+      email: email,
+      isUser: true,
+    }
+  }
+
+  return response;
+
+});
+
+
+/**
+ * Checks to see if the user email already exists in the database
+ * @param email: user's email
+ * @return {existingUser} boolean true/false
+ */
+ const isExistingUser = co(function *(email) {
+
+   const key = yield WalletKey.findOne({ userEmail: email });
+
+   if(key) { return true } else { return false };
+ });
