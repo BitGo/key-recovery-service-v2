@@ -171,7 +171,7 @@ exports.provisionKey = co(function *(req) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
-        'Protect your backup key now',
+        'Protect your BitGo wallet now',
         (existingUser? 'existingUserNewKeyTemplate' : 'newkeytemplate'),
         {
           pub: key.pub,
