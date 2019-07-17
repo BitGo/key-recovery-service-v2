@@ -6,6 +6,8 @@ module.exports = {
     tbtc: 'xpub',
     eth: 'xpub',
     teth: 'xpub',
+    eos: 'xpub',
+    teos: 'xpub',
     erc: 'xpub',
     terc: 'xpub',
     ltc: 'xpub',

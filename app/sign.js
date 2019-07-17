@@ -27,6 +27,7 @@ const utxoNetworks = {
 const coinDecimals = {
   btc: 8,
   eth: 18,
+  eos: 4,
   xrp: 6,
   bch: 8,
   bsv: 8,
@@ -36,6 +37,7 @@ const coinDecimals = {
   xlm: 7,
   tbtc: 8,
   teth: 18,
+  teos: 4,
   txrp: 6,
   tltc: 8,
   txlm: 7,
@@ -47,6 +49,9 @@ const coinDecimals = {
 
 const BCH_COINS = ['bch', 'tbch', 'bsv', 'tbsv'];
 const TEN = new BN(10);
+
+const EOS_MAINNET_CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
+const EOS_TESTNET_CHAIN_ID = 'e70aaab8997e1dfce58fbfac80cbbb8fecec7b99cf982a9444273cbc64c41473';
 
 const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm) {
   console.log('Sign Recovery Transaction');
@@ -197,6 +202,49 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   transaction.sign(backupSigningKey);
 
   return transaction.serialize().toString('hex');
+};
+
+const handleSignEos = function(recoveryRequest, key, skipConfirm) {
+  const EosJs = require('eosjs');
+  const ecc = require('eosjs-ecc');
+  let chainId;
+  if (recoveryRequest.coin === 'eos') {
+    chainId = EOS_MAINNET_CHAIN_ID;
+  } else {
+    chainId = EOS_TESTNET_CHAIN_ID;
+  }
+
+  const sendableTxJsonString = getTransactionHexFromRequest(recoveryRequest);
+  const eosTx = JSON.parse(sendableTxJsonString);
+  const packed_trx = eosTx.packed_trx;
+
+  const { recipient, amount } = utils.deserializeEOSTransaction(EosJs, packed_trx);
+
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
+
+  const outputs = [{
+    address: recipient,
+    amount: new BN(amount)
+  }];
+
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
+
+  if (!key) {
+    console.log('Please enter the xprv of the wallet for signing: ');
+    key = prompt();
+  }
+
+  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
+
+  const dataToSign = utils.getEOSSignatureData(packed_trx, chainId);
+  const signBuffer = Buffer.from(dataToSign, 'hex');
+  const privateKeyBuffer = backupKeyNode.keyPair.getPrivateKeyBuffer();
+  const signature = ecc.Signature.sign(signBuffer, privateKeyBuffer).toString();
+
+  eosTx.signatures.push(signature);
+
+  // EOS txHex is a stringified JSON containing the signatures array
+  return JSON.stringify(eosTx);
 };
 
 const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
@@ -403,6 +451,9 @@ const handleSign = function(args) {
         }
       }
       break;
+    case 'eos':
+      txHex = handleSignEos(recoveryRequest, key, args.confirm);
+      break;
     case 'xrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
       break;
@@ -438,4 +489,4 @@ const handleSign = function(args) {
   return finalRecovery;
 };
 
-module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, parseKey };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, parseKey };

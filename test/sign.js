@@ -68,6 +68,14 @@ describe('Offline Signing Tool', function() {
     txHex.should.equal('AAAAAHEP9lt5a47RHJTy9SOF17o2M9Lih1KWuybKJV3pUSvoAAAAZAARr38AAAAEAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAaW6ZR+Cl61718Kj1T7SpBJ5p30GX27pVFfYcVNSNu/YAAAAAAAAAG/COr5wAAAAAAAAAApLOXkcAAABA8JygGFMr8/Rz/0rQ9XwnfP/IFyGA6u7fc1YwyZtfaZIV1AN/D2MttqsTzNFQO4y+jjg9xeQL/B9oK3uorfk8AG1x4ngAAABA6CziP3aswxI18X8bg1dZhje0LqgOfrMBc9qrfxEPivSBey/Oro+qrQQgfeKvNIYnvGRuPn2fB/c41GKPM1VtCQ==')
   });
 
+  it('cosigns an eos transaction', function() {
+    const recoveryRequest = JSON.parse(fs.readFileSync('./test/transactions/teos.json', { encoding: 'utf8' }));
+    const key = 'xprv9s21ZrQH143K2SGfLqMk9eaSbix4XUqXg2wqXkATpfnQsyvaXBTnEqi71aLSq1rL3qJh32FRrA2VnrfMMEmbNS5xnRCiNSHKdAVR6Ep5Ptx';
+
+    const txHex = signingTool.handleSignEos(recoveryRequest, key, true);
+    txHex.should.equal('{"compression":"none","packed_trx":"d3ca235dbed650bc3a64000000000100a6823403ea3055000000572d3ccdcd01507551997772734c00000000a8ed323221507551997772734c9052d3d42ec9b071a08601000000000004454f53000000000000","signatures":["SIG_K1_JzpSv5pkpzuzg5FqYUAVsrEtPooVCDx5Ls3qkpyuSpsZozj6cMCxgz2jYuuqBoLBTRPet62QFoaVVJ6Rrh1YDp64yRMBBy","SIG_K1_K6YVr5Mhgw4JC4vd4r9v2SgLTRTK8JhnuffK8BCMXPBdht77jyoWZHJQzZbwwEvCY4LhTv6Fnnuey1ibnZniJWzrF6y5sZ"]}');
+  });
+
   it('cosigns an erc20 transaction', function() {
     const recoveryRequest = JSON.parse(fs.readFileSync('./test/transactions/terc.json', { encoding: 'utf8' }));
     const key = 'xprv9s21ZrQH143K2SGfLqMk9eaSbix4XUqXg2wqXkATpfnQsyvaXBTnEqi71aLSq1rL3qJh32FRrA2VnrfMMEmbNS5xnRCiNSHKdAVR6Ep5Ptx';

@@ -1,0 +1,6 @@
+{
+  "id": "27b5fe65c239efc9674c6ade77edbd00e5dc9c4d0f059866a7e388b072b57d1d",
+  "tx": "{\"compression\":\"none\",\"packed_trx\":\"d3ca235dbed650bc3a64000000000100a6823403ea3055000000572d3ccdcd01507551997772734c00000000a8ed323221507551997772734c9052d3d42ec9b071a08601000000000004454f53000000000000\",\"signatures\":[\"SIG_K1_JzpSv5pkpzuzg5FqYUAVsrEtPooVCDx5Ls3qkpyuSpsZozj6cMCxgz2jYuuqBoLBTRPet62QFoaVVJ6Rrh1YDp64yRMBBy\"]}",
+  "backupKey": "xpub661MyMwAqRbcEvM8SrtkWnXB9knYvwZP3FsSL8a5P1KPknFj4in2ne2arrzHAG3sUD7VxTDUfaxuPb78vnGVzaUBJMoo4pt2oYez6cgr46Y",
+  "coin": "teos"
+}
