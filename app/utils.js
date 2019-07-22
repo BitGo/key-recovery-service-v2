@@ -196,3 +196,51 @@ exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
   }
   return outFile;
 }
+
+
+/**
+ * Deserialize an EOS transaction
+ * @param {ObjectConstructor} EosJs The EosJs class
+ * @param {String} serializedTransaction The EOS transaction returned from `serializeTransaction` above as hex string
+ * @return {Object} Deserialized transaction, including recipient and amount
+ */
+exports.deserializeEOSTransaction = function(EosJs, serializedTransaction) {
+  const eosClient = new EosJs({ });
+  const eosTxStruct = eosClient.fc.structs.transaction;
+  const serializedBuffer = Buffer.from(serializedTransaction, 'hex');
+
+  const transaction = EosJs.modules.Fcbuffer.fromBuffer(eosTxStruct, serializedBuffer);
+
+  // Get transfer action values
+  // Only support transactions with one action: transfer
+  if (transaction.actions.length !== 1) {
+    throw new Error(`invalid number of actions: ${transaction.actions.length}`);
+  }
+  const txAction = transaction.actions[0];
+  if (!txAction) {
+    throw new Error('missing transaction action');
+  }
+  if (txAction.name !== 'transfer') {
+    throw new Error(`invalid action: ${txAction.name}`);
+  }
+  const transferStruct = eosClient.fc.abiCache.abi('eosio.token').structs.transfer;
+  const serializedTransferDataBuffer = Buffer.from(txAction.data, 'hex');
+  const transferActionData = EosJs.modules.Fcbuffer.fromBuffer(transferStruct, serializedTransferDataBuffer);
+  transaction.address = transferActionData.to;
+  transaction.amount = transferActionData.quantity.split(' ')[0];;
+  return { recipient: transaction.address, amount: transaction.amount };
+};
+
+/**
+ * Get the data that actually has to be signed for the tx
+ * @param {Object} tx The serialized EOS transaction to get signature data for
+ * @return {String} The data that needs to be signed for this tx
+ */
+exports.getEOSSignatureData = function(tx, chainId) {
+  return Buffer.concat([
+    Buffer.from(chainId, 'hex'),              // The ChainID representing the chain that we are on
+    Buffer.from(tx, 'hex'),                   // The serialized unsigned tx
+    Buffer.from(new Uint8Array(32)),  // Some padding
+  ]).toString('hex');
+};
+
