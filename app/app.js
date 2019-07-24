@@ -23,6 +23,8 @@ module.exports = function(args) {
 
   app.use(bodyParser.urlencoded({ extended: false, limit: '1mb' }));
   app.use(bodyParser.json({ limit: '1mb' }));
+  app.use(clientErrorHandler);
+  app.use(errorHandler);
 
   app.get('/', function (req, res, next) {
     res.send({ name: process.config.name });
@@ -35,4 +37,17 @@ module.exports = function(args) {
 
   app.post('/isUser', utils.promiseWrapper(krs.isUser));
   return app;
+};
+
+function clientErrorHandler (err, req, res, next) {
+  if (req.xhr) {
+    res.status(500).send({ error: 'Something failed!' })
+  } else {
+    next(err)
+  }
+};
+
+function errorHandler (err, req, res, next) {
+  res.status(500)
+  res.json({ error: "Oops! Internal server error." })
 };
