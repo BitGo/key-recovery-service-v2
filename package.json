@@ -18,7 +18,7 @@
     "argparse": "^1.0.10",
     "bignumber.js": "^7.2.1",
     "bitcoinjs-message": "^2.0.0",
-    "bitgo": "^4.46.0",
+    "bitgo": "^7.0.0-rc.0",
     "bitgo-utxo-lib": "^1.2.1",
     "body-parser": "^1.18.3",
     "dotenv": "^6.1.0",
