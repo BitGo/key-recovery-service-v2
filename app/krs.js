@@ -171,7 +171,7 @@ exports.provisionKey = co(function *(req) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
-        'Protect your BitGo wallet now',
+        'Welcome to Coincover',
         (existingUser? 'existingUserNewKeyTemplate' : 'newkeytemplate'),
         {
           pub: key.pub,
