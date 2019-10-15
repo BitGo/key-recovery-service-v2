@@ -124,6 +124,9 @@ exports.provisionKey = co(function *(req) {
     throw utils.ErrorResponse(400, 'email required');
   }
 
+  // Check if the user is new or existing via their email
+  let existingUser = yield isExistingUser(userEmail);
+
   if (process.config.requesterAuth && process.config.requesterAuth.required) {
     if (!req.body.requesterId && !req.body.requesterSecret) {
       throw utils.ErrorResponse(401, 'this krs requires you to send a requesterId and requesterSecret to get a key');
@@ -163,9 +166,6 @@ exports.provisionKey = co(function *(req) {
   }
 
   yield masterKey.update({ $inc: { keyCount: 1 } });
-
-  // Check if the user is new or existing via their email
-  let existingUser = isExistingUser(key.userEmail);
 
   if (!req.body.disableKRSEmail && !process.config.disableAllKRSEmail) {
     try {
