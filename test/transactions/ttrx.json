@@ -1,0 +1,6 @@
+{
+  "id": "26d73a8892e9a5ed6bccc07da7b8113ced08749fcb7b2600bb96a40766eed8da",
+  "tx": "{\"visible\":false,\"txID\":\"26d73a8892e9a5ed6bccc07da7b8113ced08749fcb7b2600bb96a40766eed8da\",\"raw_data\":{\"contract\":[{\"parameter\":{\"value\":{\"amount\":22000000,\"owner_address\":\"41becdc38018e2202ec67679257ba97fce9b3995a4\",\"to_address\":\"41979719d19c20cb8480ed0f1135285ff14c8dad58\"},\"type_url\":\"type.googleapis.com/protocol.TransferContract\"},\"type\":\"TransferContract\"}],\"ref_block_bytes\":\"188c\",\"ref_block_hash\":\"f432b7931e3859cc\",\"expiration\":1573078842000,\"timestamp\":1573075185139},\"raw_data_hex\":\"0a02188c2208f432b7931e3859cc4090f5b896e42d5a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541becdc38018e2202ec67679257ba97fce9b3995a4121541979719d19c20cb8480ed0f1135285ff14c8dad581880e3be0a70f3dbd994e42d\",\"signature\":[\"9d61b1c11b2573c3a90163fa6fdda609d7dcaf89b00fa03b3c89ce756ac9765a323ecf462a8347d3fbd5c1c943f4028645f702f818e19594bb23aaa95aa380ae01\"]}",
+  "backupKey": "xpub661MyMwAqRbcEvM8SrtkWnXB9knYvwZP3FsSL8a5P1KPknFj4in2ne2arrzHAG3sUD7VxTDUfaxuPb78vnGVzaUBJMoo4pt2oYez6cgr46Y",
+  "coin": "ttrx"
+}

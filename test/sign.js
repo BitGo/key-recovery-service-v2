@@ -76,6 +76,16 @@ describe('Offline Signing Tool', function() {
     txHex.should.equal('{"compression":"none","packed_trx":"d3ca235dbed650bc3a64000000000100a6823403ea3055000000572d3ccdcd01507551997772734c00000000a8ed323221507551997772734c9052d3d42ec9b071a08601000000000004454f53000000000000","signatures":["SIG_K1_JzpSv5pkpzuzg5FqYUAVsrEtPooVCDx5Ls3qkpyuSpsZozj6cMCxgz2jYuuqBoLBTRPet62QFoaVVJ6Rrh1YDp64yRMBBy","SIG_K1_K6YVr5Mhgw4JC4vd4r9v2SgLTRTK8JhnuffK8BCMXPBdht77jyoWZHJQzZbwwEvCY4LhTv6Fnnuey1ibnZniJWzrF6y5sZ"]}');
   });
 
+  it('cosigns a trx transaction', function() {
+    const recoveryRequest = JSON.parse(fs.readFileSync('./test/transactions/ttrx.json', { encoding: 'utf8' }));
+    const key = 'xprv9s21ZrQH143K2SGfLqMk9eaSbix4XUqXg2wqXkATpfnQsyvaXBTnEqi71aLSq1rL3qJh32FRrA2VnrfMMEmbNS5xnRCiNSHKdAVR6Ep5Ptx';
+
+    const txHex = signingTool.handleSignTrx(recoveryRequest, key, true);
+    txHex.should.equal('{"visible":false,"txID":"26d73a8892e9a5ed6bccc07da7b8113ced08749fcb7b2600bb96a40766eed8da","raw_data":{"contract":[{"parameter":{"value":{"amount":22000000,"owner_address":"41becdc38018e2202ec67679257ba97fce9b3995a4","to_address":"41979719d19c20cb8480ed0f1135285ff14c8dad58"},"type_url":"type.googleapis.com/protocol.TransferContract"},"type":"TransferContract"}],"ref_block_bytes":"188c","ref_block_hash":"f432b7931e3859cc","expiration":1573078842000,"timestamp":1573075185139},"raw_data_hex":"0a02188c2208f432b7931e3859cc4090f5b896e42d5a68080112640a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412330a1541becdc38018e2202ec67679257ba97fce9b3995a4121541979719d19c20cb8480ed0f1135285ff14c8dad581880e3be0a70f3dbd994e42d","signature":["9d61b1c11b2573c3a90163fa6fdda609d7dcaf89b00fa03b3c89ce756ac9765a323ecf462a8347d3fbd5c1c943f4028645f702f818e19594bb23aaa95aa380ae01","e6648a6f6ef9faa4adafbd852bf955515c6dc18d0d391b6d167da35d8f7410929f3d59dac0e434d4c07c553a951e0c42fe01f4677d587ae7a226a9d7521a8a7200"]}');
+    const tx = JSON.parse(txHex);
+    tx.signature.length.should.equal(2);
+  });
+
   it('cosigns an erc20 transaction', function() {
     const recoveryRequest = JSON.parse(fs.readFileSync('./test/transactions/terc.json', { encoding: 'utf8' }));
     const key = 'xprv9s21ZrQH143K2SGfLqMk9eaSbix4XUqXg2wqXkATpfnQsyvaXBTnEqi71aLSq1rL3qJh32FRrA2VnrfMMEmbNS5xnRCiNSHKdAVR6Ep5Ptx';

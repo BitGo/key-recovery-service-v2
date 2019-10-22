@@ -1,4 +1,5 @@
 const utxoLib = require('bitgo-utxo-lib');
+const accountLib = require('@bitgo/account-lib');
 const prova = require('prova-lib');
 const fs = require('fs');
 const _ = require('lodash');
@@ -28,6 +29,7 @@ const coinDecimals = {
   btc: 8,
   eth: 18,
   eos: 4,
+  trx: 6,
   xrp: 6,
   bch: 8,
   bsv: 8,
@@ -38,6 +40,7 @@ const coinDecimals = {
   tbtc: 8,
   teth: 18,
   teos: 4,
+  ttrx: 6,
   txrp: 6,
   tltc: 8,
   txlm: 7,
@@ -202,6 +205,38 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   transaction.sign(backupSigningKey);
 
   return transaction.serialize().toString('hex');
+};
+
+const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
+  const coin = recoveryRequest.coin;
+
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+  const builder = new accountLib.TransactionBuilder({ coinName: coin });
+  builder.from(txHex);
+
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
+
+  const outputs = builder.build().destinations.map(d => {
+    return {
+      address: d.address,
+      amount: d.value.toString(10)
+    };
+  });
+
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
+
+  if (!key) {
+    console.log('Please enter the xprv of the wallet for signing: ');
+    key = prompt();
+  }
+
+  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
+  try {
+    builder.sign({ key: backupKeyNode.keyPair.getPrivateKeyBuffer() });
+  } catch (e) {
+    console.log(e);
+  }
+  return JSON.stringify(builder.build().toJson());
 };
 
 const handleSignEos = function(recoveryRequest, key, skipConfirm) {
@@ -454,6 +489,9 @@ const handleSign = function(args) {
     case 'eos':
       txHex = handleSignEos(recoveryRequest, key, args.confirm);
       break;
+    case 'trx':
+      txHex = handleSignTrx(recoveryRequest, key, args.confirm);
+      break;
     case 'xrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
       break;
@@ -489,4 +527,4 @@ const handleSign = function(args) {
   return finalRecovery;
 };
 
-module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, parseKey };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, handleSignTrx, parseKey };
