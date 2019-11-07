@@ -1,4 +1,6 @@
 const utxoLib = require('bitgo-utxo-lib');
+const accountLib = require('@bitgo/account-lib');
+const statics = require('@bitgo/statics');
 const prova = require('prova-lib');
 const fs = require('fs');
 const _ = require('lodash');
@@ -28,6 +30,7 @@ const coinDecimals = {
   btc: 8,
   eth: 18,
   eos: 4,
+  trx: 6,
   xrp: 6,
   bch: 8,
   bsv: 8,
@@ -38,6 +41,7 @@ const coinDecimals = {
   tbtc: 8,
   teth: 18,
   teos: 4,
+  ttrx: 6,
   txrp: 6,
   tltc: 8,
   txlm: 7,
@@ -202,6 +206,34 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   transaction.sign(backupSigningKey);
 
   return transaction.serialize().toString('hex');
+};
+
+const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
+  const coin = recoveryRequest.coin;
+
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+  const builder = new accountLib.TransactionBuilder({ coinName: coin });
+  builder.from(txHex);
+
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
+
+  const outputs = builder.build().destinations.map(d => {
+    return {
+      address: d.address,
+      amount: d.value.toString(10)
+    };
+  });
+
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
+
+  if (!key) {
+    console.log('Please enter the xprv of the wallet for signing: ');
+    key = prompt();
+  }
+
+  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
+  builder.sign({ key: backupKeyNode.keyPair.getPrivateKeyBuffer() });
+  return JSON.stringify(builder.build().toJson());
 };
 
 const handleSignEos = function(recoveryRequest, key, skipConfirm) {
@@ -418,12 +450,11 @@ const handleSign = function(args) {
   const file = args.file;
 
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
-  let coin = recoveryRequest.coin;
+  const coin = statics.coins.get(recoveryRequest.coin);
 
-  if (coin.startsWith('t')) {
+  if (coin.network.type === 'testnet') {
     bitgo = new bitgojs.BitGo({ env: 'test' });
   } else {
-    console.log('prod');
     bitgo = new bitgojs.BitGo({ env: 'prod' });
   }
 
@@ -432,19 +463,19 @@ const handleSign = function(args) {
     args.key = prompt("Key: ");
   }
 
-  const key = parseKey(args.key, coin, args.path);
+  const key = parseKey(args.key, coin.name, args.path);
 
   let txHex, halfSignedInfo;
 
   // If a tokenContractAddress was provided, use that. Otherwise use the named coin
-  const basecoin = recoveryRequest.tokenContractAddress ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin);
+  const basecoin = recoveryRequest.tokenContractAddress ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin.name);
 
   switch (basecoin.getFamily()) {
     case 'eth':
       if (recoveryRequest.txPrebuild) {
         halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm, basecoin);
       } else {
-        if (coin.getChain() === 'eth' || coin.getChain() === 'teth') {
+        if (coin.family === 'eth' && !coin.isToken) {
           txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
         } else {
           txHex = handleSignErc20(recoveryRequest, key, args.confirm, basecoin);
@@ -453,6 +484,9 @@ const handleSign = function(args) {
       break;
     case 'eos':
       txHex = handleSignEos(recoveryRequest, key, args.confirm);
+      break;
+    case 'trx':
+      txHex = handleSignTrx(recoveryRequest, key, args.confirm);
       break;
     case 'xrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
@@ -489,4 +523,4 @@ const handleSign = function(args) {
   return finalRecovery;
 };
 
-module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, parseKey };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, handleSignTrx, parseKey };
