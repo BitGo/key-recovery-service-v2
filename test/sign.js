@@ -107,7 +107,7 @@ describe('Offline Signing Tool', function() {
     const key = 'xprv9s21ZrQH143K3qsoJZSJteRRZXgNHtAw5sRC1tsSy6U1D7rvKUsTTVewmx77AiAZJngxnEWMw9EcMxid73171mV7mdNFQigNpPPuDSZGULW';
 
     const txHex = signingTool.handleSignUtxo(recoveryRequest, key, true);
-    txHex.should.equal('0400008085202f89020f0b5e4de0186891e6f05528cf783b4b1d3912b5db54ccc2b6adc7b3d0e0092000000000fdfd0000473044022046bb07e69c18ac51a9e50b750ea4013741d28a3339c088b9dba19044423c70ab022047512defffc1f82fb71f637421063e7e54b91008ecb2f9c64fdc87f3aa1fa2cf01483045022100bd9797dc2737c7e2b64ca665aceca4cce57fbb88707858d86158bd78e90d6787022053fd1ce4f536cad2f4955c7219a2ef1c817147a1e8ad2ede95195e7416560f6b014c69522103738278e8d328d5a4f0fc369b9c49d551680d20db5c0be6997637a336964b5a2a2102b8a0a4ea660a24c2430c4e64c0b3f6b86683330aa852b8a47f0c9f98d3a9e67f21023764b4a19de42a5e3fc2d91ad6bdf8f5fcb637dbd0d3cd9258b28d5510347b0f53aeffffffff6aeabeea4a8e68c97eecd6823738beaa7ecf19f2988063bccfe0682ec1e7601400000000fdfe0000483045022100a51e4b0f556dbcb28d822f68e69ec34b3d2c9e145d4b45b64dd9f88097fe1ca102201fe64cd1b024033f7ad1126fd1f92628a95e44e633b0c5bcaaa5aca0a7b7fb1a01483045022100e32e9c6647f4ed8caa0f1ae7522cf7c42c881a9bc05041a85a3c1d57b67277aa022033846b58221f6f76defc6c5ebb735f7b82b824649e331a9eca94f00298fd6910014c695221027b919dc63f04713640e10904587b3b5cbd11f85a0d36c0d96598978f8587dfa0210272c7941f0a14cef6ce1b8d3d6d01826a829af391fb3c280798312d14e20ef50b210311d81eb4601cc7c4b99736471f55cde928f7d4a4201f974be4fc29c53bcf51d353aeffffffff0150f2e50e0000000017a914e1baafe8b024cb09df46b5f9ae292fa4d4c782c68700000000000000000000000000000000000000');
+    txHex.should.equal('0400008085202f89020f0b5e4de0186891e6f05528cf783b4b1d3912b5db54ccc2b6adc7b3d0e0092000000000b500483045022100c974eb780e6aa4a27a49a5224fdc2699cd37b75afb177798e4c3706af59d0748022000b2086a5e1ac33f2fdd612b88ef7d16b65acc4256d3eb5aca74fc48e24003b7014c69522103738278e8d328d5a4f0fc369b9c49d551680d20db5c0be6997637a336964b5a2a2102b8a0a4ea660a24c2430c4e64c0b3f6b86683330aa852b8a47f0c9f98d3a9e67f21023764b4a19de42a5e3fc2d91ad6bdf8f5fcb637dbd0d3cd9258b28d5510347b0f53aeffffffff6aeabeea4a8e68c97eecd6823738beaa7ecf19f2988063bccfe0682ec1e7601400000000b50048304502210093e9e50ea09ff50981266944d4852abcad184b61cdf8e2a81f8e36eb6544aaab02202c35e082c98321b51d4cb9e9b2d43589838a4ae186113815462599dad9cd2b28014c695221027b919dc63f04713640e10904587b3b5cbd11f85a0d36c0d96598978f8587dfa0210272c7941f0a14cef6ce1b8d3d6d01826a829af391fb3c280798312d14e20ef50b210311d81eb4601cc7c4b99736471f55cde928f7d4a4201f974be4fc29c53bcf51d353aeffffffff0150f2e50e0000000017a914e1baafe8b024cb09df46b5f9ae292fa4d4c782c68700000000000000000000000000000000000000');
   });
 
   it('cosigns a tbsv transaction', function() {
@@ -140,10 +140,12 @@ describe('Offline Signing Tool', function() {
     const key = 'xprv9s21ZrQH143K2VPbcq9NwP51S43YX67rUG834oU8BvHgvSayfp9DRuPs6xfKThGbHbdaiGNWdyS5LmTc9GdCVCpNUs6wfyaLukHsvVB8PwP';
     const file = './test/transactions/unsigned-teth.json';
     const expectedOut = JSON.parse(fs.readFileSync('./test/transactions/half-signed-teth.json'));
+
     const args = { file, key, noWrite: true }
     const outFile = signingTool.handleSign(args);
     should(outFile.txInfo.sequenceId).not.be.ok();
     delete outFile.txInfo.sequenceId;
+    delete outFile.txInfo.hopTransaction;
     outFile.should.deepEqual(expectedOut);
   });
 
@@ -155,6 +157,7 @@ describe('Offline Signing Tool', function() {
     const outFile = signingTool.handleSign(args);
     should(outFile.txInfo.sequenceId).not.be.ok();
     delete outFile.txInfo.sequenceId;
+    delete outFile.txInfo.hopTransaction;
     outFile.should.deepEqual(expectedOut);
   });
 });

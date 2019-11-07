@@ -1,5 +1,6 @@
 const utxoLib = require('bitgo-utxo-lib');
 const accountLib = require('@bitgo/account-lib');
+const statics = require('@bitgo/statics');
 const prova = require('prova-lib');
 const fs = require('fs');
 const _ = require('lodash');
@@ -231,11 +232,7 @@ const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
   }
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
-  try {
-    builder.sign({ key: backupKeyNode.keyPair.getPrivateKeyBuffer() });
-  } catch (e) {
-    console.log(e);
-  }
+  builder.sign({ key: backupKeyNode.keyPair.getPrivateKeyBuffer() });
   return JSON.stringify(builder.build().toJson());
 };
 
@@ -453,12 +450,11 @@ const handleSign = function(args) {
   const file = args.file;
 
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
-  let coin = recoveryRequest.coin;
+  const coin = statics.coins.get(recoveryRequest.coin);
 
-  if (coin.startsWith('t')) {
+  if (coin.network.type === 'testnet') {
     bitgo = new bitgojs.BitGo({ env: 'test' });
   } else {
-    console.log('prod');
     bitgo = new bitgojs.BitGo({ env: 'prod' });
   }
 
@@ -467,19 +463,19 @@ const handleSign = function(args) {
     args.key = prompt("Key: ");
   }
 
-  const key = parseKey(args.key, coin, args.path);
+  const key = parseKey(args.key, coin.name, args.path);
 
   let txHex, halfSignedInfo;
 
   // If a tokenContractAddress was provided, use that. Otherwise use the named coin
-  const basecoin = recoveryRequest.tokenContractAddress ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin);
+  const basecoin = recoveryRequest.tokenContractAddress ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin.name);
 
   switch (basecoin.getFamily()) {
     case 'eth':
       if (recoveryRequest.txPrebuild) {
         halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm, basecoin);
       } else {
-        if (coin.getChain() === 'eth' || coin.getChain() === 'teth') {
+        if (coin.family === 'eth' && !coin.isToken) {
           txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
         } else {
           txHex = handleSignErc20(recoveryRequest, key, args.confirm, basecoin);
