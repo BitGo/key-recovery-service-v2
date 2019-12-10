@@ -79,7 +79,6 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
   var mailOptions = {
     from: process.config.mail.fromemail,
     to: toEmail,
-    bcc: 'bbb0ioa_555ftvk@mails3.zohocrm.com',
     subject: subject, // Subject line
     attachments: attachments,
     headers: { 'X-Mailgun-Tag' : tags }
