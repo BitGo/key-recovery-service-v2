@@ -43,6 +43,13 @@ module.exports = {
     },
     "tags": ["This is not the tag you're looking for" , "Outa gouta, Solo?" , "It’s a trap!"]
   },
+  "mailchimp" : {
+    "apiEndpoint": "https://us4.api.mailchimp.com/3.0/",
+    "apiKey" : "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-us4",
+    "listId" : "de165667ab",
+    "moreWalletsTags" : ["Lead-BitGo Wallet", "Wallet-Multi"],
+    "firstWalletTags" : ["Lead-BitGo Wallet", "Wallet-Single"]
+  },
   "requesterAuth": {
     "required": false,
     "clients": {
@@ -52,5 +59,6 @@ module.exports = {
   "verificationPub": null,
   "neverReuseMasterKey": true,
   "disableAllKRSEmail": true,
+  "sendMailChimpNotKRSEMail": true,
   "lowKeyWarningLevels": [10000, 5000, 1000, 500, 100, 0]
 };

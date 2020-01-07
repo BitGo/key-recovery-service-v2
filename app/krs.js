@@ -10,6 +10,7 @@ const utils = require('./utils');
 
 const MasterKey = require('./models/masterkey');
 const WalletKey = require('./models/walletkey');
+const mailchimp = require('./mailchimp');
 
 /**
  * Makes a POST request to an endpoint specified by the customer. This is used by heavy API customers
@@ -167,7 +168,9 @@ exports.provisionKey = co(function *(req) {
 
   yield masterKey.update({ $inc: { keyCount: 1 } });
 
-  if (!req.body.disableKRSEmail && !process.config.disableAllKRSEmail) {
+  if (!req.body.disableKRSEmail &&
+      !process.config.disableAllKRSEmail &&
+      !process.config.sendMailChimpNotKRSEMail) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
@@ -182,6 +185,32 @@ exports.provisionKey = co(function *(req) {
         });
     } catch (e) {
       throw utils.ErrorResponse(503, 'Problem sending email');
+    }
+  }
+
+  if(process.config.sendMailChimpNotKRSEMail) {
+    try {
+      var mcRes;
+
+      mcRes = yield mailchimp.createMember(userEmail);
+      if(mcRes.status !== 200) {
+        console.log("Mailchimp User Not Created. " + mcRes.Msg);
+      }
+
+      if(existingUser) {
+        mcRes = yield mailchimp.addTagToMember(userEmail, process.config.mailchimp.moreWalletsTags)
+        console.log('Adding[' + process.config.mailchimp.moreWalletsTags + '] to existing user.')
+      } else {
+        mcRes = yield mailchimp.addTagToMember(userEmail, process.config.mailchimp.firstWalletTags)
+        console.log('Adding[' + process.config.mailchimp.firstWalletTags + '] to existing user.')
+      }
+
+      if(mcRes.status !== 200) {
+        console.log('Mailchimp API Error[' + mcRes.Msg + '] - Tags not added[' + mcRes.Msg + ']');
+      }
+    } catch (e) {
+      console.log('Failed to create Mailchimp lists and tags. ' + e);
+      throw utils.ErrorResponse(503, 'Problem calling mailchimp');
     }
   }
 
