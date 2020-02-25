@@ -101,12 +101,12 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
 /**
  * Prints the recovery transaction information and prompt for the confirmation as well as the key, if needed to.
  * @param recoveryRequest The recovery transansaction request object.
- * @param key The provided private key of the wallet.
  * @param outputs The outputs of the transaction.
  * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
+ * @param [key] The provided private key of the wallet.
  * @returns The private key of the wallet.
  */
-const promptForConfirmatioAndKey = function(recoveryRequest, key, outputs, skipConfirm) {
+const promptForConfirmationAndKey = function(recoveryRequest, outputs, skipConfirm, key) {
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
   confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
 
@@ -146,7 +146,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     amount: ( new BN(out.value) ).div( TEN.pow(decimals) ).toString()
   }));
   
-  key = promptForConfirmatioAndKey(recoveryRequest, key, outputs, skipConfirm);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
@@ -213,11 +213,11 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
  * Signs an Ethereum transaction.
  * @param recoveryRequest The recovery request object.
  * @param key The provided private key of the wallet.
- * @param kipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
- * @param isCoinToken The boolean value that indicates if the transaction is for erc20 or ETH.
+ * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
+ * @param isToken The boolean value that indicates if the transaction is for erc20 or ETH.
  * @returns The 'hex' value of the signed transaction.
  */
-const signEthTx = function(recoveryRequest, key, skipConfirm, isCoinToken) {
+const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   const EthTx = require('ethereumjs-tx');
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
@@ -231,12 +231,12 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isCoinToken) {
   }];
 
   // if request is for ETH, need to correct the amount decimals.
-  if (!isCoinToken) {
+  if (!isToken) {
     const decimals = coinDecimals[recoveryRequest.coin];
     outputs[0].amount = outputs[0].amount.div(TEN.pow(decimals));
   }
 
-  key = promptForConfirmatioAndKey(recoveryRequest, key, outputs, skipConfirm);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   transaction.sign(getBackupSigningKey(key, recoveryRequest.backupKey));
 
@@ -257,7 +257,7 @@ const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
     };
   });
 
-  key = promptForConfirmatioAndKey(recoveryRequest, key, outputs, skipConfirm);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   builder.sign({ key: getBackupSigningKey(key, recoveryRequest.backupKey) });
   return JSON.stringify(builder.build().toJson());
@@ -284,7 +284,7 @@ const handleSignEos = function(recoveryRequest, key, skipConfirm) {
     amount: new BN(amount)
   }];
 
-  key = promptForConfirmatioAndKey(recoveryRequest, key, outputs, skipConfirm);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const dataToSign = utils.getEOSSignatureData(packed_trx, chainId);
   const signBuffer = Buffer.from(dataToSign, 'hex');
@@ -313,7 +313,7 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
     amount: (new BN(transaction.Amount)).div(TEN.pow(decimals))
   }];
 
-  key = promptForConfirmatioAndKey(recoveryRequest, key, outputs, skipConfirm);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
@@ -349,7 +349,7 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     amount: transaction.operations[0].amount || transaction.operations[0].startingBalance
   }];
 
-  key = promptForConfirmatioAndKey(recoveryRequest, key, outputs, skipConfirm);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   let backupKeypair;
 
