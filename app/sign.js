@@ -98,6 +98,38 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
   return node;
 };
 
+/**
+ * Prints the recovery transaction information and prompt for the confirmation as well as the key, if needed to.
+ * @param recoveryRequest The recovery transansaction request object.
+ * @param outputs The outputs of the transaction.
+ * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
+ * @param [key] The provided private key of the wallet.
+ * @returns The private key of the wallet.
+ */
+const promptForConfirmationAndKey = function(recoveryRequest, outputs, skipConfirm, key) {
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
+
+  if (!key) {
+    console.log('Please enter the xprv of the wallet for signing: ');
+    key = prompt();
+  }
+
+  return key;
+}
+
+/**
+ * Gets the backup private key that can be used to sign the transaction.
+ * @param key The provided private key.
+ * @param expectedXpub The public key specified with the request. 
+ * @returns The private key to sign the transaction.
+ */
+const getBackupSigningKey = function(key, expectedXpub) {
+  const backupKeyNode = getHDNodeAndVerify(key, expectedXpub);
+
+  return backupKeyNode.keyPair.getPrivateKeyBuffer;
+}
+
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   const network = utxoNetworks[recoveryRequest.coin];
   const decimals = coinDecimals[recoveryRequest.coin];
@@ -113,13 +145,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     address: utxoLib.address.fromOutputScript(out.script, network),
     amount: ( new BN(out.value) ).div( TEN.pow(decimals) ).toString()
   }));
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
+  
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
@@ -179,31 +206,39 @@ const handleHalfSignEth = function(recoveryRequest, key, skipConfirm, basecoin) 
 }
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
+  return signEthTx(recoveryRequest, key, skipConfirm, false);
+};
+
+/**
+ * Signs an Ethereum transaction.
+ * @param recoveryRequest The recovery request object.
+ * @param key The provided private key of the wallet.
+ * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
+ * @param isToken The boolean value that indicates if the transaction is for erc20 or ETH.
+ * @returns The 'hex' value of the signed transaction.
+ */
+const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   const EthTx = require('ethereumjs-tx');
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
   const transaction = new EthTx(txHex);
-  const decimals = coinDecimals[recoveryRequest.coin];
 
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
   const txData = transaction.data;
+  
   const outputs = [{
     address: '0x' + txData.slice(16, 36).toString('hex'),
-    amount: (new BN(txData.slice(36, 68).toString('hex'), 16)).div(TEN.pow(decimals))
+    amount: new BN(txData.slice(36, 68).toString('hex'), 16)
   }];
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
+  // if request is for ETH, need to correct the amount decimals.
+  if (!isToken) {
+    const decimals = coinDecimals[recoveryRequest.coin];
+    outputs[0].amount = outputs[0].amount.div(TEN.pow(decimals));
   }
 
-  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
-  const backupSigningKey = backupKeyNode.keyPair.getPrivateKeyBuffer();
-
-  transaction.sign(backupSigningKey);
+  transaction.sign(getBackupSigningKey(key, recoveryRequest.backupKey));
 
   return transaction.serialize().toString('hex');
 };
@@ -215,8 +250,6 @@ const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
   const builder = new accountLib.TransactionBuilder({ coinName: coin });
   builder.from(txHex);
 
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
-
   const outputs = builder.build().destinations.map(d => {
     return {
       address: d.address,
@@ -224,15 +257,9 @@ const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
     };
   });
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
-
-  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
-  builder.sign({ key: backupKeyNode.keyPair.getPrivateKeyBuffer() });
+  builder.sign({ key: getBackupSigningKey(key, recoveryRequest.backupKey) });
   return JSON.stringify(builder.build().toJson());
 };
 
@@ -252,25 +279,16 @@ const handleSignEos = function(recoveryRequest, key, skipConfirm) {
 
   const { recipient, amount } = utils.deserializeEOSTransaction(EosJs, packed_trx);
 
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
-
   const outputs = [{
     address: recipient,
     amount: new BN(amount)
   }];
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
-
-  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const dataToSign = utils.getEOSSignatureData(packed_trx, chainId);
   const signBuffer = Buffer.from(dataToSign, 'hex');
-  const privateKeyBuffer = backupKeyNode.keyPair.getPrivateKeyBuffer();
+  const privateKeyBuffer = getBackupSigningKey(key, recoveryRequest.backupKey);
   const signature = ecc.Signature.sign(signBuffer, privateKeyBuffer).toString();
 
   eosTx.signatures.push(signature);
@@ -289,19 +307,13 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   const decimals = coinDecimals[recoveryRequest.coin];
   const transaction = rippleParse.decode(txHex);
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
   const outputs = [{
     address: transaction.Destination,
     amount: (new BN(transaction.Amount)).div(TEN.pow(decimals))
   }];
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
@@ -321,11 +333,8 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     stellar.Network.useTestNetwork();
   }
 
-  const decimals = coinDecimals[recoveryRequest.coin];
-
   const txHex = getTransactionHexFromRequest(recoveryRequest);
   const transaction = new stellar.Transaction(txHex);
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
   if (transaction.operations.length !== 1) {
     throw new Error('Recovery transaction is trying to perform multiple operations - aborting');
@@ -340,12 +349,7 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     amount: transaction.operations[0].amount || transaction.operations[0].startingBalance
   }];
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the private key of the wallet for signing: ');
-    key = prompt();
-  }
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   let backupKeypair;
 
@@ -359,38 +363,13 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     throw new Error('provided private key does not match public key specified with recovery request');
   }
 
-  transaction.sign(stellar.Keypair.fromSecret(key));
+  transaction.sign(backupKeypair);
 
   return transaction.toEnvelope().toXDR('base64');
 };
 
 const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
-  const EthTx = require('ethereumjs-tx');
-
-  const txHex = getTransactionHexFromRequest(recoveryRequest);
-  const transaction = new EthTx(txHex);
-
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
-  const txData = transaction.data;
-  const outputs = [{
-    address: '0x' + txData.slice(16, 36).toString('hex'),
-    amount: new BN(txData.slice(36, 68).toString('hex'), 16)
-  }];
-
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
-
-  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
-
-  const backupSigningKey = backupKeyNode.keyPair.getPrivateKeyBuffer();
-
-  transaction.sign(backupSigningKey);
-
-  return transaction.serialize().toString('hex');
+  return signEthTx(recoveryRequest, key, skipConfirm, true);
 };
 
 /* *
@@ -478,7 +457,7 @@ const handleSign = function(args) {
         if (coin.family === 'eth' && !coin.isToken) {
           txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
         } else {
-          txHex = handleSignErc20(recoveryRequest, key, args.confirm, basecoin);
+          txHex = handleSignErc20(recoveryRequest, key, args.confirm);
         }
       }
       break;
