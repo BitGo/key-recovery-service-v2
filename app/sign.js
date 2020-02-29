@@ -26,31 +26,6 @@ const utxoNetworks = {
   tdash: utxoLib.networks.dashTest,
 };
 
-const coinDecimals = {
-  btc: 8,
-  eth: 18,
-  eos: 4,
-  trx: 6,
-  xrp: 6,
-  bch: 8,
-  bsv: 8,
-  ltc: 8,
-  zec: 8,
-  dash: 8,
-  xlm: 7,
-  tbtc: 8,
-  teth: 18,
-  teos: 4,
-  ttrx: 6,
-  txrp: 6,
-  tltc: 8,
-  txlm: 7,
-  tbch: 8,
-  tbsv: 8,
-  tzec: 8,
-  tdash: 8,
-};
-
 const BCH_COINS = ['bch', 'tbch', 'bsv', 'tbsv'];
 const TEN = new BN(10);
 
@@ -100,7 +75,7 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
 
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   const network = utxoNetworks[recoveryRequest.coin];
-  const decimals = coinDecimals[recoveryRequest.coin];
+  const decimals = statics.coins.get(recoveryRequest.coin).decimalPlaces;
 
   if (!network) {
     throw new Error(`Unsupported coin: ${recoveryRequest.coin}`);
@@ -183,8 +158,7 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
   const transaction = new EthTx(txHex);
-  const decimals = coinDecimals[recoveryRequest.coin];
-
+  const decimals = statics.coins.get(recoveryRequest.coin).decimalPlaces;
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
   const txData = transaction.data;
   const outputs = [{
@@ -287,7 +261,8 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
 
-  const decimals = coinDecimals[recoveryRequest.coin];
+  const decimals = statics.coins.get(recoveryRequest.coin).decimalPlaces;
+
   const transaction = rippleParse.decode(txHex);
   const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
@@ -321,7 +296,7 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     stellar.Network.useTestNetwork();
   }
 
-  const decimals = coinDecimals[recoveryRequest.coin];
+  const decimals = statics.coins.get(recoveryRequest.coin).decimalPlaces;
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
   const transaction = new stellar.Transaction(txHex);
