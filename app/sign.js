@@ -11,45 +11,45 @@ const bip39 = require('bip39');
 const bitgojs = require('bitgo');
 let bitgo;
 
-const utxoNetworks = {
-  btc: utxoLib.networks.bitcoin,
-  ltc: utxoLib.networks.litecoin,
-  bch: utxoLib.networks.bitcoincash,
-  bsv: utxoLib.networks.bitcoinsv,
-  zec: utxoLib.networks.zcash,
-  dash: utxoLib.networks.dash,
-  tltc: utxoLib.networks.litecoin,
-  tbtc: utxoLib.networks.testnet,
-  tbch: utxoLib.networks.bitcoincashTestnet,
-  tbsv: utxoLib.networks.bitcoinsvTestnet,
-  tzec: utxoLib.networks.zcashTest,
-  tdash: utxoLib.networks.dashTest,
-};
+// const utxoNetworks = {
+//   btc: utxoLib.networks.bitcoin,
+//   ltc: utxoLib.networks.litecoin,
+//   bch: utxoLib.networks.bitcoincash,
+//   bsv: utxoLib.networks.bitcoinsv,
+//   zec: utxoLib.networks.zcash,
+//   dash: utxoLib.networks.dash,
+//   tltc: utxoLib.networks.litecoin,
+//   tbtc: utxoLib.networks.testnet,
+//   tbch: utxoLib.networks.bitcoincashTestnet,
+//   tbsv: utxoLib.networks.bitcoinsvTestnet,
+//   tzec: utxoLib.networks.zcashTest,
+//   tdash: utxoLib.networks.dashTest,
+// };
 
-const coinDecimals = {
-  btc: 8,
-  eth: 18,
-  eos: 4,
-  trx: 6,
-  xrp: 6,
-  bch: 8,
-  bsv: 8,
-  ltc: 8,
-  zec: 8,
-  dash: 8,
-  xlm: 7,
-  tbtc: 8,
-  teth: 18,
-  teos: 4,
-  ttrx: 6,
-  txrp: 6,
-  tltc: 8,
-  txlm: 7,
-  tbch: 8,
-  tbsv: 8,
-  tzec: 8,
-  tdash: 8,
-};
+// const coinDecimals = {
+//   btc: 8,
+//   eth: 18,
+//   eos: 4,
+//   trx: 6,
+//   xrp: 6,
+//   bch: 8,
+//   bsv: 8,
+//   ltc: 8,
+//   zec: 8,
+//   dash: 8,
+//   xlm: 7,
+//   tbtc: 8,
+//   teth: 18,
+//   teos: 4,
+//   ttrx: 6,
+//   txrp: 6,
+//   tltc: 8,
+//   txlm: 7,
+//   tbch: 8,
+//   tbsv: 8,
+//   tzec: 8,
+//   tdash: 8,
+// };
 
 const BCH_COINS = ['bch', 'tbch', 'bsv', 'tbsv'];
 const TEN = new BN(10);
@@ -131,8 +131,11 @@ const getBackupSigningKey = function(key, expectedXpub) {
 }
 
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
-  const network = utxoNetworks[recoveryRequest.coin];
-  const decimals = coinDecimals[recoveryRequest.coin];
+  
+  // const network = utxoNetworks[recoveryRequest.coin];
+  // const decimals = coinDecimals[recoveryRequest.coin];
+  const network = statics.coins.get[recoveryRequest.coin].network;
+  const decimals = statics.coins.get[recoveryRequest.coin].decimalPlaces;
 
   if (!network) {
     throw new Error(`Unsupported coin: ${recoveryRequest.coin}`);
@@ -232,7 +235,9 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
 
   // if request is for ETH, need to correct the amount decimals.
   if (!isToken) {
-    const decimals = coinDecimals[recoveryRequest.coin];
+    // const decimals = coinDecimals[recoveryRequest.coin];
+    const decimals = statics.coins.get[recoveryRequest.coin].decimalPlaces;
+    
     outputs[0].amount = outputs[0].amount.div(TEN.pow(decimals));
   }
 
@@ -305,7 +310,8 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
 
-  const decimals = coinDecimals[recoveryRequest.coin];
+  // const decimals = coinDecimals[recoveryRequest.coin];
+  const decimals = statics.coins.get[recoveryRequest.coin].decimalPlaces;
   const transaction = rippleParse.decode(txHex);
 
   const outputs = [{
