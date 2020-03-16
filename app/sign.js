@@ -18,6 +18,10 @@ const TEN = new BN(10);
 const EOS_MAINNET_CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
 const EOS_TESTNET_CHAIN_ID = 'e70aaab8997e1dfce58fbfac80cbbb8fecec7b99cf982a9444273cbc64c41473';
 
+const getCoinConfig = function(coin, data) {
+  return statics.coins.get[coin].data;
+}
+
 const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm) {
   console.log('Sign Recovery Transaction');
   console.log('=========================');
@@ -93,8 +97,8 @@ const getBackupSigningKey = function(key, expectedXpub) {
 
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   
-  const network = statics.coins.get[recoveryRequest.coin].network;
-  const decimals = statics.coins.get[recoveryRequest.coin].decimalPlaces;
+  const network = getCoinConfig(recoveryRequest.coin, network);
+  const decimals = getCoinConfig(recoveryRequest.coin, decimalPlaces);
 
   if (!network) {
     throw new Error(`Unsupported coin: ${recoveryRequest.coin}`);
@@ -194,7 +198,7 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
 
   // if request is for ETH, need to correct the amount decimals.
   if (!isToken) {
-    const decimals = statics.coins.get[recoveryRequest.coin].decimalPlaces;
+    const decimals = getCoinConfig(recoveryRequest.coin, decimalPlaces);
     
     outputs[0].amount = outputs[0].amount.div(TEN.pow(decimals));
   }
@@ -268,7 +272,7 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
 
-  const decimals = statics.coins.get[recoveryRequest.coin].decimalPlaces;
+  const decimals = getCoinConfig(recoveryRequest.coin, decimalPlaces);
   const transaction = rippleParse.decode(txHex);
 
   const outputs = [{
