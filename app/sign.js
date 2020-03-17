@@ -120,14 +120,14 @@ const promptForConfirmationAndKey = function(recoveryRequest, outputs, skipConfi
 
 /**
  * Gets the backup private key that can be used to sign the transaction.
- * @param key The provided private key.
+ * @param xprv The provided extended private key (BIP32).
  * @param expectedXpub The public key specified with the request. 
  * @returns The private key to sign the transaction.
  */
-const getBackupSigningKey = function(key, expectedXpub) {
-  const backupKeyNode = getHDNodeAndVerify(key, expectedXpub);
+const getBackupSigningKey = function(xprv, expectedXpub) {
+  const backupKeyNode = getHDNodeAndVerify(xprv, expectedXpub);
 
-  return backupKeyNode.keyPair.getPrivateKeyBuffer;
+  return backupKeyNode.keyPair.getPrivateKeyBuffer();
 }
 
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
@@ -237,8 +237,9 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   }
 
   key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
+  const signingKey = getBackupSigningKey(key, recoveryRequest.backupKey);
 
-  transaction.sign(getBackupSigningKey(key, recoveryRequest.backupKey));
+  transaction.sign(signingKey);
 
   return transaction.serialize().toString('hex');
 };
@@ -258,8 +259,9 @@ const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
   });
 
   key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
+  const signingKey = getBackupSigningKey(key, recoveryRequest.backupKey);
 
-  builder.sign({ key: getBackupSigningKey(key, recoveryRequest.backupKey) });
+  builder.sign({ key: signingKey });
   return JSON.stringify(builder.build().toJson());
 };
 
