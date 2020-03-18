@@ -225,6 +225,7 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
  */
 const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   const EthTx = require('ethereumjs-tx');
+  const EthUtil = require('ethereumjs-util');
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
   const transaction = new EthTx(txHex);
@@ -242,10 +243,20 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
     outputs[0].amount = outputs[0].amount.div(TEN.pow(decimals));
   }
 
-  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
-  const signingKey = getBackupSigningKey(key, recoveryRequest.backupKey);
+  // When generating signatures, we don't currently use EIP155 but this could
+  // be activated if we wanted to. This would protect against replay attacks on other
+  // blockchains, such as Ethereum Classic. To activate the EIP155, we would have to
+  // know the chain ID of the Ethereum blockchains we are using as this value goes
+  // into the V field when using EIP155.
+  // cf. https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
+  const useEip155 = false;
 
-  transaction.sign(signingKey);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
+  const signingKey = Buffer.from(getBackupSigningKey(key, recoveryRequest.backupKey), "hex");
+  const signature = EthUtil.ecsign(transaction.hash(useEip155), signingKey, transaction.chainId);
+  transaction.v = signature.v; // Change this if activating EIP155
+  transaction.r = signature.r;
+  transaction.s = signature.s;
 
   return transaction.serialize().toString('hex');
 };
