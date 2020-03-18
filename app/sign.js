@@ -78,6 +78,12 @@ const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm)
   }
 };
 
+/**
+ * Verifies that input is a valid HD key and parses it into HDNode object.
+ * @param xprv Base58 representation of extended private key
+ * @param expectedXpub The corresponding extended public key
+ * @returns The HDNode object representing the extended private key
+ */
 const getHDNodeAndVerify = function(xprv, expectedXpub) {
   let node;
 
@@ -99,7 +105,7 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
 };
 
 /**
- * Prints the recovery transaction information and prompt for the confirmation as well as the key, if needed to.
+ * Prints the recovery transaction information and prompt the user for the confirmation as well as the key, if needed to.
  * @param recoveryRequest The recovery transansaction request object.
  * @param outputs The outputs of the transaction.
  * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.

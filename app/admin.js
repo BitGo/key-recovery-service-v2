@@ -208,7 +208,7 @@ const validateKey = function(key, type) {
   if (process.config.verificationPub) {
 
     if (!key.signature) {
-      console.log(`Key ${key.pub} requires a signature and does not have one.`);
+      console.log(`Key ${key.pub} has a verification public key but no signature.`);
       return false;
     }
 
