@@ -17,7 +17,6 @@ steps:
 - name: install
   image: node:10
   commands:
-  - "git fetch origin +refs/heads/$DRONE_REPO_BRANCH:$DRONE_REPO_BRANCH || true"
   - npm install
 
 - name: audit
