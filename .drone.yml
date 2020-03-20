@@ -1,0 +1,107 @@
+---
+kind: pipeline
+name: check requisites (node:10)
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build information
+  image: node:10
+  commands:
+  - node --version
+  - npm --version
+  - git --version
+
+- name: install
+  image: node:10
+  commands:
+  - "git fetch origin +refs/heads/$DRONE_REPO_BRANCH:$DRONE_REPO_BRANCH || true"
+  - npm install
+
+- name: audit
+  image: node:10
+  commands:
+  - npm audit
+
+- name: lint
+  image: node:10
+  commands:
+  - npm run lint
+
+---
+kind: pipeline
+name: unit tests (node:6)
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build information
+  image: node:6
+  commands:
+  - node --version
+  - npm --version
+  - git --version
+
+- name: install
+  image: node:6
+  commands:
+  - "git fetch origin +refs/heads/$DRONE_REPO_BRANCH:$DRONE_REPO_BRANCH || true"
+  - npm install
+
+- name: unit-test
+  image: node:6
+  commands:
+  - npm run test
+
+trigger:
+  branch:
+    exclude:
+    - master
+    - "rel/*"
+    - prod/production
+
+services:
+   mongo:
+      image: mongo:3.4
+
+---
+kind: pipeline
+name: unit tests (node:10)
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: build information
+  image: node:10
+  commands:
+  - node --version
+  - npm --version
+  - git --version
+
+- name: install
+  image: node:10
+  commands:
+  - "git fetch origin +refs/heads/$DRONE_REPO_BRANCH:$DRONE_REPO_BRANCH || true"
+  - npm install
+
+- name: unit-test
+  image: node:10
+  commands:
+  - npm run test
+
+trigger:
+  branch:
+    exclude:
+    - master
+    - "rel/*"
+    - prod/production
+
+services:
+   mongo:
+      image: mongo:3.4

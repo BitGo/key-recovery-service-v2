@@ -5,11 +5,14 @@
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/mocha/bin/_mocha --timeout 20000 --recursive test/",
-    "start": "node -r dotenv/config bin/server.js"
+    "start": "node -r dotenv/config bin/server.js",
+    "lint": "./node_modules/.bin/eslint --ext .js .",
+    "audit": "npm audit"
   },
   "license": "MIT",
   "devDependencies": {
     "chai": "2.2.0",
+    "eslint": "^5.2.0",
     "mocha": "^5.2.0",
     "should": "^13.2.1",
     "supertest": "^3.3.0"
