@@ -49,7 +49,6 @@ steps:
 - name: install
   image: node:6
   commands:
-  - "git fetch origin +refs/heads/$DRONE_REPO_BRANCH:$DRONE_REPO_BRANCH || true"
   - npm install
 
 - name: unit-test
@@ -60,8 +59,6 @@ steps:
 trigger:
   branch:
     exclude:
-    - master
-    - "rel/*"
     - prod/production
 
 services:
@@ -87,7 +84,6 @@ steps:
 - name: install
   image: node:10
   commands:
-  - "git fetch origin +refs/heads/$DRONE_REPO_BRANCH:$DRONE_REPO_BRANCH || true"
   - npm install
 
 - name: unit-test
@@ -98,8 +94,6 @@ steps:
 trigger:
   branch:
     exclude:
-    - master
-    - "rel/*"
     - prod/production
 
 services:
