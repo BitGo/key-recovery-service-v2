@@ -87,6 +87,16 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
   return sendMail(mailOptions);
 };
 
+/*
+ * Check if input is a valid seed input formatted as a hex string.
+ * Cf. the BIP32 specification, a valid seed is between 128 bits and 512 bits (both included),
+ * i.e. between 16 and 64 bytes.
+ * https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#master-key-generation
+ */
+function IsValidBip32Seed(input) {
+  return input.match(/^(([0-9a-f]{2}){16,64})$/);
+}
+
 /** deriveChildKey
  *
  * returns the derived key as a string
@@ -107,6 +117,12 @@ exports.deriveChildKey = function(master, derivationPath, type, neuter) {
 
     return childKey.toBase58();
   } else if (type === 'xlm') {
+
+    // Verify that input is a valid seed, cf. SEP05 (Stellar Ecosystem Proposals 5) which follows BIP39
+    // which is based on BIP32:
+    // https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md
+    if (!IsValidBip32Seed(master)) { throw new Error(`Invalid seed. Got: ${master}`); }
+
     const masterNode = stellarHd.fromSeed(master);
     const childKey = stellar.Keypair.fromRawEd25519Seed(masterNode.derive(derivationPath));
 

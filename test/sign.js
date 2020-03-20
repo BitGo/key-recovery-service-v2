@@ -36,6 +36,7 @@ describe('Offline Signing Tool', function() {
     txHex.should.equal('0100000002a78a1ff21efe8ceab2313cc72fac9511cbbb25af813b23410a9d402df1b990b500000000fdfe0000483045022100c425fb29056467a9f2c1d36425af1fffd61ad144054b901bcc8f05e492ae1889022074e347f91d613835273dc748914845514c3518898f74db50fb8de101d4a1faed014830450221008d10d818f5a2bb5243fd0f7b2e93073a931aa58e3b1955c84a4cc515f8d90ebf022063e5689c9a7424a0013101273a1b043a4be41d2f5cf5698f81ce3ba215114dca014c695221029c96401cdc64e0770e919e83fa52253a357b8d1b9ce4a71b08e87a2f6f4bf5212103292baef857797fcb2305cd637796d028f546e369011fa21818c91ae5e99454f32102226a4fa945adb0111e485b45165aab1de6fe8ad576e40d0049e6ab977ddda4e953aeffffffffe31818827c8777254590bff08f827dde9a741b2565dbfdc297a2fe56538b457b00000000fdfd0000483045022100e83143cd33f52c03032969aa4b1ef8c00ceec25dbfa789501a5c443ba8c8a9d4022040c6069871e848354157e331879aca88dd44a677db4836d3eed7dc853a4fae2e01473044022035add75708e034aa652914aa9c5275a8804bf9cd20b248390adddacba0712fe502202e8105656fc71e78946225f74af60b9f70eaa4afc5b49cb69c19b408240be4c7014c6952210291aa18f30c870f48af409c0f7718c0e53442a6c5238fe364c3a2c6b218943be5210285c12449fe9bf5b79661db21b6d394291220285a0985e6f3f9cac5aad0ca2fd22103d184ca13c0cb96bcfbde0ef891b1e6290200a43f75cbf1dc80e6c802465d0b4353aeffffffff01c832c3230000000017a914541703db4b42397e985b38993a52dbb5373526c58700000000');
   });
 
+  // function called in transaction: sendMultiSig, see https://bloxy.info/functions/39125215, pre-EIP155
   it('cosigns a teth transaction', function() {
     const recoveryRequest = JSON.parse(fs.readFileSync('./test/transactions/teth.json', { encoding: 'utf8' }));
     const key = 'xprv9s21ZrQH143K3vqGSfKp56taWfrBxApx9p6ySyWqFGXBrfJyDGaUErjpUu6RW7EjKmynii8zzp2b1AWno9JgVevuG3S8DqY97GHN59XMBfN';
@@ -86,6 +87,7 @@ describe('Offline Signing Tool', function() {
     tx.signature.length.should.equal(2);
   });
 
+  // function called in transaction: sendMultiSigToken, see https://bloxy.info/functions/0dcd7a6c, pre-EIP155
   it('cosigns an erc20 transaction', function() {
     const recoveryRequest = JSON.parse(fs.readFileSync('./test/transactions/terc.json', { encoding: 'utf8' }));
     const key = 'xprv9s21ZrQH143K2SGfLqMk9eaSbix4XUqXg2wqXkATpfnQsyvaXBTnEqi71aLSq1rL3qJh32FRrA2VnrfMMEmbNS5xnRCiNSHKdAVR6Ep5Ptx';

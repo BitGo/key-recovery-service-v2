@@ -78,6 +78,12 @@ const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm)
   }
 };
 
+/**
+ * Verifies that input is a valid HD key and parses it into HDNode object.
+ * @param xprv Base58 representation of extended private key
+ * @param expectedXpub The corresponding extended public key
+ * @returns The HDNode object representing the extended private key
+ */
 const getHDNodeAndVerify = function(xprv, expectedXpub) {
   let node;
 
@@ -99,7 +105,7 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
 };
 
 /**
- * Prints the recovery transaction information and prompt for the confirmation as well as the key, if needed to.
+ * Prints the recovery transaction information and prompt the user for the confirmation as well as the key, if needed to.
  * @param recoveryRequest The recovery transansaction request object.
  * @param outputs The outputs of the transaction.
  * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
@@ -120,14 +126,14 @@ const promptForConfirmationAndKey = function(recoveryRequest, outputs, skipConfi
 
 /**
  * Gets the backup private key that can be used to sign the transaction.
- * @param key The provided private key.
+ * @param xprv The provided extended private key (BIP32).
  * @param expectedXpub The public key specified with the request. 
  * @returns The private key to sign the transaction.
  */
-const getBackupSigningKey = function(key, expectedXpub) {
-  const backupKeyNode = getHDNodeAndVerify(key, expectedXpub);
+const getBackupSigningKey = function(xprv, expectedXpub) {
+  const backupKeyNode = getHDNodeAndVerify(xprv, expectedXpub);
 
-  return backupKeyNode.keyPair.getPrivateKeyBuffer;
+  return backupKeyNode.keyPair.getPrivateKeyBuffer();
 }
 
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
@@ -219,6 +225,7 @@ const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
  */
 const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   const EthTx = require('ethereumjs-tx');
+  const EthUtil = require('ethereumjs-util');
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
   const transaction = new EthTx(txHex);
@@ -236,9 +243,20 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
     outputs[0].amount = outputs[0].amount.div(TEN.pow(decimals));
   }
 
-  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
+  // When generating signatures, we don't currently use EIP155 but this could
+  // be activated if we wanted to. This would protect against replay attacks on other
+  // blockchains, such as Ethereum Classic. To activate the EIP155, we would have to
+  // know the chain ID of the Ethereum blockchains we are using as this value goes
+  // into the V field when using EIP155.
+  // cf. https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
+  const useEip155 = false;
 
-  transaction.sign(getBackupSigningKey(key, recoveryRequest.backupKey));
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
+  const signingKey = Buffer.from(getBackupSigningKey(key, recoveryRequest.backupKey), "hex");
+  const signature = EthUtil.ecsign(transaction.hash(useEip155), signingKey, transaction.chainId);
+  transaction.v = signature.v; // Change this if activating EIP155
+  transaction.r = signature.r;
+  transaction.s = signature.s;
 
   return transaction.serialize().toString('hex');
 };
@@ -258,8 +276,9 @@ const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
   });
 
   key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
+  const signingKey = getBackupSigningKey(key, recoveryRequest.backupKey);
 
-  builder.sign({ key: getBackupSigningKey(key, recoveryRequest.backupKey) });
+  builder.sign({ key: signingKey });
   return JSON.stringify(builder.build().toJson());
 };
 
