@@ -57,7 +57,7 @@ local step(
 [
   pipeline(
     kind = "pipeline",
-    name = "check requisites (node:10)",
+    name = "checks (node:10)",
     steps = [
       step(
         name = "build information",
@@ -73,13 +73,6 @@ local step(
         image = "node:10",
         commands = [
           "npm install",
-        ],
-      ),
-      step(
-        name = "audit",
-        image = "node:10",
-        commands = [
-          "npm audit",
         ],
       ),
       step(
@@ -172,6 +165,14 @@ local step(
           MONGO_URI: "mongodb://mongo:27017/key-recovery-service-test",
         },
       ),
+      step(
+        name = "audit",
+        image = "node:10",
+        failure = true,
+        commands = [
+          "npm audit",
+        ],
+      ),
     ],
     trigger = {
       branch: {
@@ -186,6 +187,5 @@ local step(
         image: "mongo:3.4",
       },
     ]
-  )
-
+  ),
 ]
