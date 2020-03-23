@@ -13,17 +13,17 @@
   "devDependencies": {
     "chai": "2.2.0",
     "eslint": "^5.2.0",
-    "mocha": "^5.2.0",
+    "mocha": "^7.1.1",
     "should": "^13.2.1",
     "supertest": "^3.3.0"
   },
   "dependencies": {
-    "@bitgo/account-lib": "^0.1.4",
-    "@bitgo/statics": "^2.4.0",
+    "@bitgo/account-lib": "^1.0.2",
+    "@bitgo/statics": "^3.4.2",
     "argparse": "^1.0.10",
     "bignumber.js": "^7.2.1",
     "bitcoinjs-message": "^2.0.0",
-    "bitgo": "^8.5.0",
+    "bitgo": "^10.0.0",
     "bitgo-utxo-lib": "^1.6.0",
     "body-parser": "^1.18.3",
     "dotenv": "^6.1.0",
@@ -46,7 +46,7 @@
     "ripple-keypairs": "^0.10.1",
     "ripple-lib": "^1.0.0-beta.5",
     "stellar-base": "^0.8.3",
-    "stellar-hd-wallet": "0.0.8",
+    "stellar-hd-wallet": "0.0.10",
     "superagent": "^3.8.3"
   }
 }
