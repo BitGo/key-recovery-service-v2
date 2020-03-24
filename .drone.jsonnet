@@ -75,62 +75,15 @@ local step(
           "npm install",
         ],
       ),
-      step(
-        name = "lint",
-        image = "node:10",
-        commands = [
-          "npm run lint",
-        ],
-      ),
+///      step(
+///        name = "lint",
+///        image = "node:10",
+///        failure = true,
+///        commands = [
+///          "npm run lint",
+///        ],
+///      ),
     ],
-  ),
-  pipeline(
-    kind = "pipeline",
-    name = "unit tests (node:6)",
-    steps = [
-      step(
-        name = "build information",
-        image = "node:6",
-        commands = [
-          "node --version",
-          "npm --version",
-          "git --version",
-        ],
-      ),
-      step(
-        name = "install",
-        image = "node:6",
-        commands = [
-          "npm install",
-        ],
-      ),
-      step(
-        name = "unit-test",
-        image = "node:6",
-        depends_on = [
-          "install",
-        ],
-        commands = [
-          "npm run test",
-        ],
-        environment = {
-          MONGO_URI: "mongodb://mongo:27017/key-recovery-service-test",
-        },
-      ),
-    ],
-    trigger = {
-      branch: {
-        exclude: [
-          "prod/production",
-        ],
-      },
-    },
-    services = [
-      {
-        name: "mongo",
-        image: "mongo:3.4",
-      },
-    ]
   ),
   pipeline(
     kind = "pipeline",
@@ -168,9 +121,9 @@ local step(
       step(
         name = "audit",
         image = "node:10",
-        failure = true,
+///        failure = true,
         commands = [
-          "npm audit",
+          "npm run audit",
         ],
       ),
     ],
@@ -186,6 +139,62 @@ local step(
         name: "mongo",
         image: "mongo:3.4",
       },
-    ]
+    ],
+  ),
+  pipeline(
+    kind = "pipeline",
+    name = "unit tests (node:12)",
+    steps = [
+      step(
+        name = "build information",
+        image = "node:12",
+        commands = [
+          "node --version",
+          "npm --version",
+          "git --version",
+        ],
+      ),
+      step(
+        name = "install",
+        image = "node:12",
+        commands = [
+          "npm install",
+        ],
+      ),
+      step(
+        name = "unit-test",
+        image = "node:12",
+        depends_on = [
+          "install",
+        ],
+        commands = [
+          "npm run test",
+        ],
+        environment = {
+          MONGO_URI: "mongodb://mongo:27017/key-recovery-service-test",
+        },
+      ),
+      step(
+        name = "audit",
+        image = "node:12",
+///        failure = true,
+        commands = [
+          "npm run audit",
+        ],
+      ),
+    ],
+    trigger = {
+      branch: {
+        exclude: [
+          "prod/production",
+        ],
+      },
+    },
+    services = [
+      {
+        name: "mongo",
+        image: "mongo:3.4",
+      },
+    ],
   ),
 ]
