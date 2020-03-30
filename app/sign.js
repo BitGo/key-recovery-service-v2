@@ -420,7 +420,7 @@ const parseKey = function(rawkey, coin, path) {
   }
   // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
   if(path) {
-    let node = utxoLib.HDNode.fromPrivateKeyBuffer(Buffer.from(rawkey, 'hex'));
+    let node = utxoLib.HDNode.fromBase58(rawkey);
     node = node.derivePath(path);
     return node.toBase58();
   }
