@@ -16,35 +16,35 @@ const getArgs = function () {
   });
 
   parser.addArgument(
-  ['-p', '--port'], {
-    help: 'Port to listen on'
-  });
+    ['-p', '--port'], {
+      help: 'Port to listen on'
+    });
 
   parser.addArgument(
-  ['-b', '--bind'], {
-    help: 'Bind to given address to listen for connections (default: localhost)'
-  });
+    ['-b', '--bind'], {
+      help: 'Bind to given address to listen for connections (default: localhost)'
+    });
 
   parser.addArgument(
-  ['-d', '--debug'], {
-    action: 'storeTrue',
-    help: 'Debug logging'
-  });
+    ['-d', '--debug'], {
+      action: 'storeTrue',
+      help: 'Debug logging'
+    });
 
   parser.addArgument(
-  ['-k', '--keypath'], {
-    help: 'Path to the SSL Key file (required if running production)'
-  });
+    ['-k', '--keypath'], {
+      help: 'Path to the SSL Key file (required if running production)'
+    });
 
   parser.addArgument(
-  ['-c', '--crtpath'], {
-    help: 'Path to the SSL Crt file (required if running production)'
-  });
+    ['-c', '--crtpath'], {
+      help: 'Path to the SSL Crt file (required if running production)'
+    });
 
   parser.addArgument(
-  ['-l', '--logfile'], {
-    help: 'Filepath to write the access log'
-  });
+    ['-l', '--logfile'], {
+      help: 'Filepath to write the access log'
+    });
 
   return parser.parseArgs();
 };
@@ -52,13 +52,14 @@ const getArgs = function () {
 const args = getArgs();
 const app = require('../app/app')(args);
 
-let baseUri = "http";
+let baseUri = 'http';
+let server;
 if (args.keypath && args.crtpath) {
   // Run in SSL mode
-  const privateKey  = fs.readFileSync(args.keypath, 'utf8');
+  const privateKey = fs.readFileSync(args.keypath, 'utf8');
   const certificate = fs.readFileSync(args.crtpath, 'utf8');
-  const credentials = {key: privateKey, cert: certificate};
-  baseUri += "s";
+  const credentials = { key: privateKey, cert: certificate };
+  baseUri += 's';
   server = https.createServer(credentials, app);
 } else {
   server = http.createServer(app);
@@ -71,9 +72,9 @@ db.connection.on('error', console.error.bind(console, 'database connection error
 db.connection.once('open', function () {
   server.listen(port, host);
 
-  baseUri += "://" + host;
+  baseUri += '://' + host;
   if (!((port === 80 && !args.keypath) || (port === 443 && args.keypath))) {
-    baseUri += ":" + port;
+    baseUri += ':' + port;
   }
   console.log('Listening on: ' + baseUri);
 });

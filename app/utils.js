@@ -1,4 +1,5 @@
 const Q = require('q');
+const binary = require('ripple-binary-codec');
 const nodemailer = require('nodemailer');
 const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
@@ -31,7 +32,7 @@ exports.promiseWrapper = function(promiseRequestHandler) {
   return function (req, res, next) {
     Q.fcall(promiseRequestHandler, req, res, next)
     .then(function (result) {
-      var status = 200;
+      let status = 200;
       if (result.__redirect) {
         res.redirect(result.url);
         status = 302;
@@ -46,9 +47,9 @@ exports.promiseWrapper = function(promiseRequestHandler) {
       if (caught instanceof Error) {
         err = caught;
       } else if (typeof caught === 'string') {
-        err = new Error("(string_error) " + caught);
+        err = new Error('(string_error) ' + caught);
       } else {
-        err = new Error("(object_error) " + JSON.stringify(caught));
+        err = new Error('(object_error) ' + JSON.stringify(caught));
       }
 
       const message = err.message || 'local error';
@@ -74,7 +75,7 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
   }
 
   // setup e-mail data with unicode symbols
-  var mailOptions = {
+  const mailOptions = {
     from: process.config.mail.fromemail,
     to: toEmail,
     subject: subject, // Subject line
@@ -126,7 +127,7 @@ exports.deriveChildKey = function(master, derivationPath, type, neuter) {
     const masterNode = stellarHd.fromSeed(master);
     const childKey = stellar.Keypair.fromRawEd25519Seed(masterNode.derive(derivationPath));
 
-    if(neuter) {
+    if (neuter) {
       return childKey.publicKey();
     }
 
@@ -136,8 +137,8 @@ exports.deriveChildKey = function(master, derivationPath, type, neuter) {
 
 // Ripple signing functions from BitGoJS
 exports.computeSignature = function(tx, privateKey, signAs) {
-  const signingData = signAs ?
-    rippleParse.encodeForMultisigning(tx, signAs) : binary.encodeForSigning(tx);
+  const signingData = signAs
+    ? rippleParse.encodeForMultisigning(tx, signAs) : binary.encodeForSigning(tx);
   return rippleKeypairs.sign(signingData, privateKey);
 };
 
@@ -198,7 +199,7 @@ exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
   const signedtx = basecoin.signTransaction(obj);
   const outFile = {
     txInfo: signedtx.halfSigned
-  }
+  };
   outFile.txInfo.recipient = outFile.txInfo.recipients[0];
   delete outFile.txInfo.recipients;
   outFile.txInfo.clientSignature = outFile.txInfo.signature;
@@ -208,7 +209,7 @@ exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
     outFile.tokenContractAddress = recoveryRequest.tokenContractAddress;
   }
   return outFile;
-}
+};
 
 
 /**
@@ -240,7 +241,7 @@ exports.deserializeEOSTransaction = function(EosJs, serializedTransaction) {
   const serializedTransferDataBuffer = Buffer.from(txAction.data, 'hex');
   const transferActionData = EosJs.modules.Fcbuffer.fromBuffer(transferStruct, serializedTransferDataBuffer);
   transaction.address = transferActionData.to;
-  transaction.amount = transferActionData.quantity.split(' ')[0];;
+  transaction.amount = transferActionData.quantity.split(' ')[0];
   return { recipient: transaction.address, amount: transaction.amount };
 };
 
@@ -253,7 +254,7 @@ exports.getEOSSignatureData = function(tx, chainId) {
   return Buffer.concat([
     Buffer.from(chainId, 'hex'),              // The ChainID representing the chain that we are on
     Buffer.from(tx, 'hex'),                   // The serialized unsigned tx
-    Buffer.from(new Uint8Array(32)),  // Some padding
+    Buffer.from(new Uint8Array(32))  // Some padding
   ]).toString('hex');
 };
 

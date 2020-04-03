@@ -1,9 +1,9 @@
 const utxoLib = require('bitgo-utxo-lib');
 const accountLib = require('@bitgo/account-lib');
 const statics = require('@bitgo/statics');
-const prova = require('prova-lib');
 const fs = require('fs');
 const _ = require('lodash');
+const stellarHd = require('stellar-hd-wallet');
 const BN = require('bignumber.js');
 const prompt = require('prompt-sync')();
 const utils = require('./utils');
@@ -23,7 +23,7 @@ const utxoNetworks = {
   tbch: utxoLib.networks.bitcoincashTestnet,
   tbsv: utxoLib.networks.bitcoinsvTestnet,
   tzec: utxoLib.networks.zcashTest,
-  tdash: utxoLib.networks.dashTest,
+  tdash: utxoLib.networks.dashTest
 };
 
 const coinDecimals = {
@@ -48,7 +48,7 @@ const coinDecimals = {
   tbch: 8,
   tbsv: 8,
   tzec: 8,
-  tdash: 8,
+  tdash: 8
 };
 
 const BCH_COINS = ['bch', 'tbch', 'bsv', 'tbsv'];
@@ -105,7 +105,8 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
 };
 
 /**
- * Prints the recovery transaction information and prompt the user for the confirmation as well as the key, if needed to.
+ * Prints the recovery transaction information and prompt the user
+ * for the confirmation as well as the key, if needed to.
  * @param recoveryRequest The recovery transansaction request object.
  * @param outputs The outputs of the transaction.
  * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
@@ -122,19 +123,19 @@ const promptForConfirmationAndKey = function(recoveryRequest, outputs, skipConfi
   }
 
   return key;
-}
+};
 
 /**
  * Gets the backup private key that can be used to sign the transaction.
  * @param xprv The provided extended private key (BIP32).
- * @param expectedXpub The public key specified with the request. 
+ * @param expectedXpub The public key specified with the request.
  * @returns The private key to sign the transaction.
  */
 const getBackupSigningKey = function(xprv, expectedXpub) {
   const backupKeyNode = getHDNodeAndVerify(xprv, expectedXpub);
 
   return backupKeyNode.keyPair.getPrivateKeyBuffer();
-}
+};
 
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   const network = utxoNetworks[recoveryRequest.coin];
@@ -151,7 +152,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     address: utxoLib.address.fromOutputScript(out.script, network),
     amount: ( new BN(out.value) ).div( TEN.pow(decimals) ).toString()
   }));
-  
+
   key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
@@ -161,7 +162,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
   transaction.ins.forEach(function (input, i) {
     transaction.ins[i].value = recoveryRequest.inputs[i].amount;
-  })
+  });
 
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
 
@@ -174,13 +175,17 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
     // Derive signing key from chain path
     const derivedHDNode = backupKeyNode.derivePath(input.chainPath);
-    console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
+    console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } 
+    with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
 
     // Handle BCH
     if (BCH_COINS.includes(recoveryRequest.coin)) {
       const redeemScript = new Buffer(input.redeemScript, 'hex');
-      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
-      return; // in a Lodash forEach loop, 'return' operates like 'continue' does in a regular javascript loop. It finishes this iteration and moves to the next iteration
+      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript,
+        utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
+      // in a Lodash forEach loop, 'return' operates like 'continue' does
+      // in a regular javascript loop. It finishes this iteration and moves to the next iteration
+      return;
     }
 
     // Handle Bech32
@@ -188,7 +193,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
       const witnessScript = Buffer.from(input.witnessScript, 'hex');
       const witnessScriptHash = utxoLib.crypto.sha256(witnessScript);
       const prevOutScript = utxoLib.script.witnessScriptHash.output.encode(witnessScriptHash);
-      txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+      txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript,
+        utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       return;
     }
 
@@ -196,7 +202,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     const redeemScript = new Buffer(input.redeemScript, 'hex');
     if (input.witnessScript) {
       const witnessScript = new Buffer(input.witnessScript, 'hex');
-      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript,
+        utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       return;
     }
 
@@ -209,7 +216,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
 const handleHalfSignEth = function(recoveryRequest, key, skipConfirm, basecoin) {
   return utils.halfSignEthTransaction(basecoin, recoveryRequest, key);
-}
+};
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   return signEthTx(recoveryRequest, key, skipConfirm, false);
@@ -231,7 +238,7 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   const transaction = new EthTx(txHex);
 
   const txData = transaction.data;
-  
+
   const outputs = [{
     address: '0x' + txData.slice(16, 36).toString('hex'),
     amount: new BN(txData.slice(36, 68).toString('hex'), 16)
@@ -252,7 +259,7 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   const useEip155 = false;
 
   key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
-  const signingKey = Buffer.from(getBackupSigningKey(key, recoveryRequest.backupKey), "hex");
+  const signingKey = Buffer.from(getBackupSigningKey(key, recoveryRequest.backupKey), 'hex');
   const signature = EthUtil.ecsign(transaction.hash(useEip155), signingKey, transaction.chainId);
   transaction.v = signature.v; // Change this if activating EIP155
   transaction.r = signature.r;
@@ -340,7 +347,7 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
   const privateKeyHex = backupKeyNode.keyPair.getPrivateKeyBuffer().toString('hex');
   const cosignedTx = utils.signXrpWithPrivateKey(txHex, privateKeyHex, { signAs: backupAddress });
 
-  return rippleApi.combine([ txHex, cosignedTx.signedTransaction ]).signedTransaction;
+  return rippleApi.combine([txHex, cosignedTx.signedTransaction]).signedTransaction;
 };
 
 const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
@@ -397,21 +404,21 @@ const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
  */
 const parseKey = function(rawkey, coin, path) {
 
-  if(rawkey.includes(',') && rawkey.split(',').length === 24) {
-    const mnemonic = rawkey.replace(/,/g,' '); // replace commas with spaces
-    if(coin === 'xlm' || coin === 'txlm') {
+  if (rawkey.includes(',') && rawkey.split(',').length === 24) {
+    const mnemonic = rawkey.replace(/,/g, ' '); // replace commas with spaces
+    if (coin === 'xlm' || coin === 'txlm') {
       // stellar is special (thanks Jeb)
       const stellarWallet = stellarHd.fromMnemonic(mnemonic);
       return stellarWallet.getSecret(0);
     }
 
     // every other coin can use xpubs
-    if(!bip39.validateMnemonic(mnemonic)) {
-      throw new Error("Invalid mnemonic");
+    if (!bip39.validateMnemonic(mnemonic)) {
+      throw new Error('Invalid mnemonic');
     }
     const seed = bip39.mnemonicToSeed(mnemonic);
     let node = utxoLib.HDNode.fromSeedBuffer(seed);
-    if(path) {
+    if (path) {
       node = node.derivePath(path);
     }
     const xprv = node.toBase58();
@@ -419,30 +426,30 @@ const parseKey = function(rawkey, coin, path) {
 
   }
   // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
-  if(path) {
+  if (path) {
     let node = utxoLib.HDNode.fromPrivateKeyBuffer(Buffer.from(rawkey, 'hex'));
     node = node.derivePath(path);
     return node.toBase58();
   }
   return rawkey;
-}
+};
 
 /**
  Not all recoveryRequest files are formatted the same. Sometimes they have 'tx', 'txHex', or 'transactionHex'
  This function gets and gets and returns the transaction hex in all of these cases
  */
 const getTransactionHexFromRequest = function(recoveryRequest) {
-  if (recoveryRequest.txHex){
-    return recoveryRequest.txHex
+  if (recoveryRequest.txHex) {
+    return recoveryRequest.txHex;
   }
-  if (recoveryRequest.transactionHex){
-    return recoveryRequest.transactionHex
+  if (recoveryRequest.transactionHex) {
+    return recoveryRequest.transactionHex;
   }
-  if (recoveryRequest.tx){
-    return recoveryRequest.tx
+  if (recoveryRequest.tx) {
+    return recoveryRequest.tx;
   }
-  throw new Error("The recovery request did not provide a transaction hex");
-}
+  throw new Error('The recovery request did not provide a transaction hex');
+};
 
 const handleSign = function(args) {
   const file = args.file;
@@ -456,9 +463,10 @@ const handleSign = function(args) {
     bitgo = new bitgojs.BitGo({ env: 'prod' });
   }
 
-  if(!args.key) {
-    console.log("\nEnter your private key for signing.\nEnter an xprv or 24 words.\nIf entering 24 words, separate each word with only a comma and no spaces.\n");
-    args.key = prompt("Key: ");
+  if (!args.key) {
+    console.log('\nEnter your private key for signing.\nEnter an xprv or 24 words.'
+      + '\nIf entering 24 words, separate each word with only a comma and no spaces.\n');
+    args.key = prompt('Key: ');
   }
 
   const key = parseKey(args.key, coin.name, args.path);
@@ -466,7 +474,8 @@ const handleSign = function(args) {
   let txHex, halfSignedInfo;
 
   // If a tokenContractAddress was provided, use that. Otherwise use the named coin
-  const basecoin = recoveryRequest.tokenContractAddress ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin.name);
+  const basecoin = recoveryRequest.tokenContractAddress
+    ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin.name);
 
   switch (basecoin.getFamily()) {
     case 'eth':
@@ -497,7 +506,7 @@ const handleSign = function(args) {
       break;
   }
 
-  if(txHex) {
+  if (txHex) {
     console.log(`Signed transaction hex: ${txHex}`);
   }
 
@@ -514,11 +523,12 @@ const handleSign = function(args) {
   }
 
   const fileStr = JSON.stringify(finalRecovery, null, 2);
-  if(!args.noWrite) {
+  if (!args.noWrite) {
     fs.writeFileSync(filename, fileStr);
     console.log('Done');
   }
   return finalRecovery;
 };
 
-module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, handleSignTrx, parseKey };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum,
+  handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, handleSignTrx, parseKey };
