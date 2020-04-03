@@ -75,14 +75,13 @@ local step(
           "npm install",
         ],
       ),
-///      step(
-///        name = "lint",
-///        image = "node:10",
-///        failure = true,
-///        commands = [
-///          "npm run lint",
-///        ],
-///      ),
+      step(
+        name = "lint",
+        image = "node:10",
+        commands = [
+          "npm run lint",
+		],
+      ),
     ],
   ),
   pipeline(

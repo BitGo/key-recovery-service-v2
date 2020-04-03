@@ -16,7 +16,7 @@
   },
   "rules": {
     "operator-linebreak": ["error", "before"],
-    "max-len": ["error", { "code": 256 } ],
+    "max-len": ["error", { "code": 120 } ],
     "indent": ["error", 2, {"SwitchCase": 1, "MemberExpression": "off"}],
     "linebreak-style": ["error", "unix"],
     "semi": ["error", "always"],
