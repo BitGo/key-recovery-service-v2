@@ -1,3 +1,5 @@
+const Promise = require('bluebird');
+const co = Promise.coroutine;
 const fs = require('fs');
 const should = require('should');
 
@@ -148,12 +150,12 @@ describe('Offline Signing Tool', function() {
       + 'JhnuffK8BCMXPBdht77jyoWZHJQzZbwwEvCY4LhTv6Fnnuey1ibnZniJWzrF6y5sZ"]}');
   });
 
-  it('cosigns a trx transaction', function() {
+  it('cosigns a trx transaction', co(function *() {
     const recoveryRequest = JSON.parse(fs.readFileSync('./test/transactions/ttrx.json', { encoding: 'utf8' }));
     const key = 'xprv9s21ZrQH143K2SGfLqMk9eaSbix4XUqXg2wqXkATpfnQsyvaXBTnEqi71aLSq1rL3qJh32FRrA2VnrfMMEmbN'
       + 'S5xnRCiNSHKdAVR6Ep5Ptx';
 
-    const txHex = signingTool.handleSignTrx(recoveryRequest, key, true);
+    const txHex = yield signingTool.handleSignTrx(recoveryRequest, key, true);
     txHex.should.equal('{"visible":false,"txID":"26d73a8892e9a5ed6bccc07da7b8113ced08749fcb7b2600bb96a4076'
       + '6eed8da","raw_data":{"contract":[{"parameter":{"value":{"amount":22000000,"owner_address":"41becdc3'
       + '8018e2202ec67679257ba97fce9b3995a4","to_address":"41979719d19c20cb8480ed0f1135285ff14c8dad58"},"type'
@@ -167,7 +169,7 @@ describe('Offline Signing Tool', function() {
       + '929f3d59dac0e434d4c07c553a951e0c42fe01f4677d587ae7a226a9d7521a8a7200"]}');
     const tx = JSON.parse(txHex);
     tx.signature.length.should.equal(2);
-  });
+  }));
 
   // function called in transaction: sendMultiSigToken, see https://bloxy.info/functions/0dcd7a6c, pre-EIP155
   it('cosigns an erc20 transaction', function() {
@@ -254,39 +256,39 @@ describe('Offline Signing Tool', function() {
     }
   });
 
-  it('parses a private key from 24 words and a path', function() {
+  it('parses a private key from 24 words and a path', co(function *() {
     const key = 'bone,penalty,bundle,plug,february,roof,rely,angry,inspire,auto,indicate,shell,assist,unhappy,unab'
       + 'le,clarify,pond,check,size,key,donor,midnight,inquiry,avoid';
     const path = 'm/0';
-    const xprv = signingTool.parseKey(key, 'eth', path);
+    const xprv = yield signingTool.parseKey(key, 'eth', path);
     xprv.should.equal('xprv9u4GesLhZXFMtAFY2vT1QpXQrgJHRcbTKnw2J1Bqm2m2HpDztvS7D3AwF69fYZnuBJyJQm4v8hegzKY'
       + '3rLCmBgujbZ3sFRzzLT42Z9oTqBt');
-  });
+  }));
 
-  it('half-signs an ETH transaction', function() {
+  it('half-signs an ETH transaction', co(function *() {
     const key = 'xprv9s21ZrQH143K2VPbcq9NwP51S43YX67rUG834oU8BvHgvSayfp9DRuPs6xfKThGbHbdaiGNWdyS5LmTc9GdCV'
       + 'CpNUs6wfyaLukHsvVB8PwP';
     const file = './test/transactions/unsigned-teth.json';
     const expectedOut = JSON.parse(fs.readFileSync('./test/transactions/half-signed-teth.json'));
 
     const args = { file, key, noWrite: true };
-    const outFile = signingTool.handleSign(args);
+    const outFile = yield signingTool.handleSign(args);
     should(outFile.txInfo.sequenceId).not.be.ok();
     delete outFile.txInfo.sequenceId;
     delete outFile.txInfo.hopTransaction;
     outFile.should.deepEqual(expectedOut);
-  });
+  }));
 
-  it('half-signs an ERC-20 transaction', function() {
+  it('half-signs an ERC-20 transaction', co(function *() {
     const key = 'xprv9s21ZrQH143K2VPbcq9NwP51S43YX67rUG834oU8BvHgvSayfp9DRuPs6xfKThGbHbdaiGNWdyS5LmTc9GdCV'
       + 'CpNUs6wfyaLukHsvVB8PwP';
     const file = './test/transactions/unsigned-terc.json';
     const expectedOut = JSON.parse(fs.readFileSync('./test/transactions/half-signed-terc.json'));
     const args = { file, key, noWrite: true };
-    const outFile = signingTool.handleSign(args);
+    const outFile = yield signingTool.handleSign(args);
     should(outFile.txInfo.sequenceId).not.be.ok();
     delete outFile.txInfo.sequenceId;
     delete outFile.txInfo.hopTransaction;
     outFile.should.deepEqual(expectedOut);
-  });
+  }));
 });

@@ -1,3 +1,5 @@
+const Promise = require('bluebird');
+const co = Promise.coroutine;
 const utxoLib = require('bitgo-utxo-lib');
 const accountLib = require('@bitgo/account-lib');
 const statics = require('@bitgo/statics');
@@ -214,9 +216,9 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   return txBuilder.build().toHex();
 };
 
-const handleHalfSignEth = function(recoveryRequest, key, skipConfirm, basecoin) {
-  return utils.halfSignEthTransaction(basecoin, recoveryRequest, key);
-};
+const handleHalfSignEth = co(function *(recoveryRequest, key, skipConfirm, basecoin) {
+  return yield utils.halfSignEthTransaction(basecoin, recoveryRequest, key);
+});
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
   return signEthTx(recoveryRequest, key, skipConfirm, false);
@@ -268,26 +270,28 @@ const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   return transaction.serialize().toString('hex');
 };
 
-const handleSignTrx = function(recoveryRequest, key, skipConfirm) {
+const handleSignTrx = co(function *(recoveryRequest, key, skipConfirm) {
   const coin = recoveryRequest.coin;
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
-  const builder = new accountLib.TransactionBuilder({ coinName: coin });
+  const builder = new accountLib.getBuilder(coin);
   builder.from(txHex);
+  const builtTransaction = yield builder.build();
 
-  const outputs = builder.build().destinations.map(d => {
+  const outputs = builtTransaction.outputs.map(d => {
     return {
       address: d.address,
-      amount: d.value.toString(10)
+      amount: d.value
     };
   });
 
   key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
   const signingKey = getBackupSigningKey(key, recoveryRequest.backupKey);
 
-  builder.sign({ key: signingKey });
-  return JSON.stringify(builder.build().toJson());
-};
+  builder.sign({ key: signingKey.toString('hex') });
+  const signedTransaction = yield builder.build();
+  return JSON.stringify(signedTransaction.toJson());
+});
 
 const handleSignEos = function(recoveryRequest, key, skipConfirm) {
   const EosJs = require('eosjs');
@@ -402,7 +406,7 @@ const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
   Takes in either an xprv, xlmsecret, or 24 words.
   Returns an xprv or xlmsecret
  */
-const parseKey = function(rawkey, coin, path) {
+const parseKey = co(function *(rawkey, coin, path) {
 
   if (rawkey.includes(',') && rawkey.split(',').length === 24) {
     const mnemonic = rawkey.replace(/,/g, ' '); // replace commas with spaces
@@ -416,7 +420,7 @@ const parseKey = function(rawkey, coin, path) {
     if (!bip39.validateMnemonic(mnemonic)) {
       throw new Error('Invalid mnemonic');
     }
-    const seed = bip39.mnemonicToSeed(mnemonic);
+    const seed = yield bip39.mnemonicToSeed(mnemonic);
     let node = utxoLib.HDNode.fromSeedBuffer(seed);
     if (path) {
       node = node.derivePath(path);
@@ -432,7 +436,7 @@ const parseKey = function(rawkey, coin, path) {
     return node.toBase58();
   }
   return rawkey;
-};
+});
 
 /**
  Not all recoveryRequest files are formatted the same. Sometimes they have 'tx', 'txHex', or 'transactionHex'
@@ -451,7 +455,7 @@ const getTransactionHexFromRequest = function(recoveryRequest) {
   throw new Error('The recovery request did not provide a transaction hex');
 };
 
-const handleSign = function(args) {
+const handleSign = co(function *(args) {
   const file = args.file;
 
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
@@ -469,7 +473,7 @@ const handleSign = function(args) {
     args.key = prompt('Key: ');
   }
 
-  const key = parseKey(args.key, coin.name, args.path);
+  const key = yield parseKey(args.key, coin.name, args.path);
 
   let txHex, halfSignedInfo;
 
@@ -480,7 +484,7 @@ const handleSign = function(args) {
   switch (basecoin.getFamily()) {
     case 'eth':
       if (recoveryRequest.txPrebuild) {
-        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm, basecoin);
+        halfSignedInfo = yield handleHalfSignEth(recoveryRequest, key, args.confirm, basecoin);
       } else {
         if (coin.family === 'eth' && !coin.isToken) {
           txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
@@ -493,7 +497,7 @@ const handleSign = function(args) {
       txHex = handleSignEos(recoveryRequest, key, args.confirm);
       break;
     case 'trx':
-      txHex = handleSignTrx(recoveryRequest, key, args.confirm);
+      txHex = yield handleSignTrx(recoveryRequest, key, args.confirm);
       break;
     case 'xrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
@@ -528,7 +532,7 @@ const handleSign = function(args) {
     console.log('Done');
   }
   return finalRecovery;
-};
+});
 
 module.exports = { handleSign, handleSignUtxo, handleSignEthereum,
   handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, handleSignTrx, parseKey };

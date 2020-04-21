@@ -1,3 +1,5 @@
+const Promise = require('bluebird');
+const co = Promise.coroutine;
 const Q = require('q');
 const binary = require('ripple-binary-codec');
 const nodemailer = require('nodemailer');
@@ -187,7 +189,7 @@ exports.signXrpWithPrivateKey = function(txHex, privateKey, options) {
   };
 };
 
-exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
+exports.halfSignEthTransaction = co(function *(basecoin, recoveryRequest, key) {
   const txPrebuild = recoveryRequest.txPrebuild;
   const obj = {
     prv: key,
@@ -196,7 +198,7 @@ exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
     expireTime: txPrebuild.expireTime,
     txPrebuild
   };
-  const signedtx = basecoin.signTransaction(obj);
+  const signedtx = yield basecoin.signTransaction(obj);
   const outFile = {
     txInfo: signedtx.halfSigned
   };
@@ -209,7 +211,7 @@ exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
     outFile.tokenContractAddress = recoveryRequest.tokenContractAddress;
   }
   return outFile;
-};
+});
 
 
 /**
