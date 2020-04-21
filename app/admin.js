@@ -445,7 +445,7 @@ const run = co(function *(testArgs) {
       yield handleImportKeys(args);
       break;
     case 'sign':
-      signingTool.handleSign(args);
+      yield signingTool.handleSign(args);
       break;
     case 'derive':
       handleDeriveKey(args);
