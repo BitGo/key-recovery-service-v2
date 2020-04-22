@@ -1,7 +1,11 @@
+const Promise = require('bluebird');
+const co = Promise.coroutine;
 const utxoLib = require('bitgo-utxo-lib');
-const prova = require('prova-lib');
+const accountLib = require('@bitgo/account-lib');
+const statics = require('@bitgo/statics');
 const fs = require('fs');
 const _ = require('lodash');
+const stellarHd = require('stellar-hd-wallet');
 const BN = require('bignumber.js');
 const prompt = require('prompt-sync')();
 const utils = require('./utils');
@@ -21,13 +25,14 @@ const utxoNetworks = {
   tbch: utxoLib.networks.bitcoincashTestnet,
   tbsv: utxoLib.networks.bitcoinsvTestnet,
   tzec: utxoLib.networks.zcashTest,
-  tdash: utxoLib.networks.dashTest,
+  tdash: utxoLib.networks.dashTest
 };
 
 const coinDecimals = {
   btc: 8,
   eth: 18,
   eos: 4,
+  trx: 6,
   xrp: 6,
   bch: 8,
   bsv: 8,
@@ -38,13 +43,14 @@ const coinDecimals = {
   tbtc: 8,
   teth: 18,
   teos: 4,
+  ttrx: 6,
   txrp: 6,
   tltc: 8,
   txlm: 7,
   tbch: 8,
   tbsv: 8,
   tzec: 8,
-  tdash: 8,
+  tdash: 8
 };
 
 const BCH_COINS = ['bch', 'tbch', 'bsv', 'tbsv'];
@@ -74,6 +80,12 @@ const confirmRecovery = function(backupKey, outputs, customMessage, skipConfirm)
   }
 };
 
+/**
+ * Verifies that input is a valid HD key and parses it into HDNode object.
+ * @param xprv Base58 representation of extended private key
+ * @param expectedXpub The corresponding extended public key
+ * @returns The HDNode object representing the extended private key
+ */
 const getHDNodeAndVerify = function(xprv, expectedXpub) {
   let node;
 
@@ -94,6 +106,39 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
   return node;
 };
 
+/**
+ * Prints the recovery transaction information and prompt the user
+ * for the confirmation as well as the key, if needed to.
+ * @param recoveryRequest The recovery transansaction request object.
+ * @param outputs The outputs of the transaction.
+ * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
+ * @param [key] The provided private key of the wallet.
+ * @returns The private key of the wallet.
+ */
+const promptForConfirmationAndKey = function(recoveryRequest, outputs, skipConfirm, key) {
+  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
+  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
+
+  if (!key) {
+    console.log('Please enter the xprv of the wallet for signing: ');
+    key = prompt();
+  }
+
+  return key;
+};
+
+/**
+ * Gets the backup private key that can be used to sign the transaction.
+ * @param xprv The provided extended private key (BIP32).
+ * @param expectedXpub The public key specified with the request.
+ * @returns The private key to sign the transaction.
+ */
+const getBackupSigningKey = function(xprv, expectedXpub) {
+  const backupKeyNode = getHDNodeAndVerify(xprv, expectedXpub);
+
+  return backupKeyNode.keyPair.getPrivateKeyBuffer();
+};
+
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   const network = utxoNetworks[recoveryRequest.coin];
   const decimals = coinDecimals[recoveryRequest.coin];
@@ -109,13 +154,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     address: utxoLib.address.fromOutputScript(out.script, network),
     amount: ( new BN(out.value) ).div( TEN.pow(decimals) ).toString()
   }));
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
 
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
@@ -124,7 +164,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
   transaction.ins.forEach(function (input, i) {
     transaction.ins[i].value = recoveryRequest.inputs[i].amount;
-  })
+  });
 
   const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
 
@@ -137,13 +177,17 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
     // Derive signing key from chain path
     const derivedHDNode = backupKeyNode.derivePath(input.chainPath);
-    console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length } with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
+    console.log(`Signing input ${ i + 1 } of ${ recoveryRequest.inputs.length }  \
+    with ${ derivedHDNode.neutered().toBase58() } (${ input.chainPath })`);
 
     // Handle BCH
     if (BCH_COINS.includes(recoveryRequest.coin)) {
       const redeemScript = new Buffer(input.redeemScript, 'hex');
-      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
-      return; // in a Lodash forEach loop, 'return' operates like 'continue' does in a regular javascript loop. It finishes this iteration and moves to the next iteration
+      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript,
+        utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
+      // in a Lodash forEach loop, 'return' operates like 'continue' does
+      // in a regular javascript loop. It finishes this iteration and moves to the next iteration
+      return;
     }
 
     // Handle Bech32
@@ -151,7 +195,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
       const witnessScript = Buffer.from(input.witnessScript, 'hex');
       const witnessScriptHash = utxoLib.crypto.sha256(witnessScript);
       const prevOutScript = utxoLib.script.witnessScriptHash.output.encode(witnessScriptHash);
-      txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+      txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript,
+        utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       return;
     }
 
@@ -159,7 +204,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     const redeemScript = new Buffer(input.redeemScript, 'hex');
     if (input.witnessScript) {
       const witnessScript = new Buffer(input.witnessScript, 'hex');
-      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript,
+        utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       return;
     }
 
@@ -170,39 +216,82 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   return txBuilder.build().toHex();
 };
 
-const handleHalfSignEth = function(recoveryRequest, key, skipConfirm, basecoin) {
-  return utils.halfSignEthTransaction(basecoin, recoveryRequest, key);
-}
+const handleHalfSignEth = co(function *(recoveryRequest, key, skipConfirm, basecoin) {
+  return yield utils.halfSignEthTransaction(basecoin, recoveryRequest, key);
+});
 
 const handleSignEthereum = function(recoveryRequest, key, skipConfirm) {
+  return signEthTx(recoveryRequest, key, skipConfirm, false);
+};
+
+/**
+ * Signs an Ethereum transaction.
+ * @param recoveryRequest The recovery request object.
+ * @param key The provided private key of the wallet.
+ * @param skipConfirm The boolean value that indicates to whether or not to prompt the user to confirm the transaction.
+ * @param isToken The boolean value that indicates if the transaction is for erc20 or ETH.
+ * @returns The 'hex' value of the signed transaction.
+ */
+const signEthTx = function(recoveryRequest, key, skipConfirm, isToken) {
   const EthTx = require('ethereumjs-tx');
+  const EthUtil = require('ethereumjs-util');
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
   const transaction = new EthTx(txHex);
-  const decimals = coinDecimals[recoveryRequest.coin];
 
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
   const txData = transaction.data;
+
   const outputs = [{
     address: '0x' + txData.slice(16, 36).toString('hex'),
-    amount: (new BN(txData.slice(36, 68).toString('hex'), 16)).div(TEN.pow(decimals))
+    amount: new BN(txData.slice(36, 68).toString('hex'), 16)
   }];
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
+  // if request is for ETH, need to correct the amount decimals.
+  if (!isToken) {
+    const decimals = coinDecimals[recoveryRequest.coin];
+    outputs[0].amount = outputs[0].amount.div(TEN.pow(decimals));
   }
 
-  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
+  // When generating signatures, we don't currently use EIP155 but this could
+  // be activated if we wanted to. This would protect against replay attacks on other
+  // blockchains, such as Ethereum Classic. To activate the EIP155, we would have to
+  // know the chain ID of the Ethereum blockchains we are using as this value goes
+  // into the V field when using EIP155.
+  // cf. https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
+  const useEip155 = false;
 
-  const backupSigningKey = backupKeyNode.keyPair.getPrivateKeyBuffer();
-
-  transaction.sign(backupSigningKey);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
+  const signingKey = Buffer.from(getBackupSigningKey(key, recoveryRequest.backupKey), 'hex');
+  const signature = EthUtil.ecsign(transaction.hash(useEip155), signingKey, transaction.chainId);
+  transaction.v = signature.v; // Change this if activating EIP155
+  transaction.r = signature.r;
+  transaction.s = signature.s;
 
   return transaction.serialize().toString('hex');
 };
+
+const handleSignTrx = co(function *(recoveryRequest, key, skipConfirm) {
+  const coin = recoveryRequest.coin;
+
+  const txHex = getTransactionHexFromRequest(recoveryRequest);
+  const builder = new accountLib.getBuilder(coin);
+  builder.from(txHex);
+  const builtTransaction = yield builder.build();
+
+  const outputs = builtTransaction.outputs.map(d => {
+    return {
+      address: d.address,
+      amount: d.value
+    };
+  });
+
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
+  const signingKey = getBackupSigningKey(key, recoveryRequest.backupKey);
+
+  builder.sign({ key: signingKey.toString('hex') });
+  const signedTransaction = yield builder.build();
+  return JSON.stringify(signedTransaction.toJson());
+});
 
 const handleSignEos = function(recoveryRequest, key, skipConfirm) {
   const EosJs = require('eosjs');
@@ -220,25 +309,16 @@ const handleSignEos = function(recoveryRequest, key, skipConfirm) {
 
   const { recipient, amount } = utils.deserializeEOSTransaction(EosJs, packed_trx);
 
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
-
   const outputs = [{
     address: recipient,
     amount: new BN(amount)
   }];
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
-
-  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const dataToSign = utils.getEOSSignatureData(packed_trx, chainId);
   const signBuffer = Buffer.from(dataToSign, 'hex');
-  const privateKeyBuffer = backupKeyNode.keyPair.getPrivateKeyBuffer();
+  const privateKeyBuffer = getBackupSigningKey(key, recoveryRequest.backupKey);
   const signature = ecc.Signature.sign(signBuffer, privateKeyBuffer).toString();
 
   eosTx.signatures.push(signature);
@@ -257,19 +337,13 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   const decimals = coinDecimals[recoveryRequest.coin];
   const transaction = rippleParse.decode(txHex);
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
   const outputs = [{
     address: transaction.Destination,
     amount: (new BN(transaction.Amount)).div(TEN.pow(decimals))
   }];
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
@@ -277,7 +351,7 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
   const privateKeyHex = backupKeyNode.keyPair.getPrivateKeyBuffer().toString('hex');
   const cosignedTx = utils.signXrpWithPrivateKey(txHex, privateKeyHex, { signAs: backupAddress });
 
-  return rippleApi.combine([ txHex, cosignedTx.signedTransaction ]).signedTransaction;
+  return rippleApi.combine([txHex, cosignedTx.signedTransaction]).signedTransaction;
 };
 
 const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
@@ -289,11 +363,8 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     stellar.Network.useTestNetwork();
   }
 
-  const decimals = coinDecimals[recoveryRequest.coin];
-
   const txHex = getTransactionHexFromRequest(recoveryRequest);
   const transaction = new stellar.Transaction(txHex);
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
 
   if (transaction.operations.length !== 1) {
     throw new Error('Recovery transaction is trying to perform multiple operations - aborting');
@@ -308,12 +379,7 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     amount: transaction.operations[0].amount || transaction.operations[0].startingBalance
   }];
 
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the private key of the wallet for signing: ');
-    key = prompt();
-  }
+  key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
   let backupKeypair;
 
@@ -327,61 +393,36 @@ const handleSignXlm = function(recoveryRequest, key, skipConfirm) {
     throw new Error('provided private key does not match public key specified with recovery request');
   }
 
-  transaction.sign(stellar.Keypair.fromSecret(key));
+  transaction.sign(backupKeypair);
 
   return transaction.toEnvelope().toXDR('base64');
 };
 
 const handleSignErc20 = function(recoveryRequest, key, skipConfirm) {
-  const EthTx = require('ethereumjs-tx');
-
-  const txHex = getTransactionHexFromRequest(recoveryRequest);
-  const transaction = new EthTx(txHex);
-
-  const customMessage = recoveryRequest.custom ? recoveryRequest.custom.message : 'None';
-  const txData = transaction.data;
-  const outputs = [{
-    address: '0x' + txData.slice(16, 36).toString('hex'),
-    amount: new BN(txData.slice(36, 68).toString('hex'), 16)
-  }];
-
-  confirmRecovery(recoveryRequest.backupKey, outputs, customMessage, skipConfirm);
-
-  if (!key) {
-    console.log('Please enter the xprv of the wallet for signing: ');
-    key = prompt();
-  }
-
-  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
-
-  const backupSigningKey = backupKeyNode.keyPair.getPrivateKeyBuffer();
-
-  transaction.sign(backupSigningKey);
-
-  return transaction.serialize().toString('hex');
+  return signEthTx(recoveryRequest, key, skipConfirm, true);
 };
 
 /* *
   Takes in either an xprv, xlmsecret, or 24 words.
   Returns an xprv or xlmsecret
  */
-const parseKey = function(rawkey, coin, path) {
+const parseKey = co(function *(rawkey, coin, path) {
 
-  if(rawkey.includes(',') && rawkey.split(',').length === 24) {
-    const mnemonic = rawkey.replace(/,/g,' '); // replace commas with spaces
-    if(coin === 'xlm' || coin === 'txlm') {
+  if (rawkey.includes(',') && rawkey.split(',').length === 24) {
+    const mnemonic = rawkey.replace(/,/g, ' '); // replace commas with spaces
+    if (coin === 'xlm' || coin === 'txlm') {
       // stellar is special (thanks Jeb)
       const stellarWallet = stellarHd.fromMnemonic(mnemonic);
       return stellarWallet.getSecret(0);
     }
 
     // every other coin can use xpubs
-    if(!bip39.validateMnemonic(mnemonic)) {
-      throw new Error("Invalid mnemonic");
+    if (!bip39.validateMnemonic(mnemonic)) {
+      throw new Error('Invalid mnemonic');
     }
-    const seed = bip39.mnemonicToSeed(mnemonic);
+    const seed = yield bip39.mnemonicToSeed(mnemonic);
     let node = utxoLib.HDNode.fromSeedBuffer(seed);
-    if(path) {
+    if (path) {
       node = node.derivePath(path);
     }
     const xprv = node.toBase58();
@@ -389,70 +430,74 @@ const parseKey = function(rawkey, coin, path) {
 
   }
   // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
-  if(path) {
+  if (path) {
     let node = utxoLib.HDNode.fromPrivateKeyBuffer(Buffer.from(rawkey, 'hex'));
     node = node.derivePath(path);
     return node.toBase58();
   }
   return rawkey;
-}
+});
 
 /**
  Not all recoveryRequest files are formatted the same. Sometimes they have 'tx', 'txHex', or 'transactionHex'
  This function gets and gets and returns the transaction hex in all of these cases
  */
 const getTransactionHexFromRequest = function(recoveryRequest) {
-  if (recoveryRequest.txHex){
-    return recoveryRequest.txHex
+  if (recoveryRequest.txHex) {
+    return recoveryRequest.txHex;
   }
-  if (recoveryRequest.transactionHex){
-    return recoveryRequest.transactionHex
+  if (recoveryRequest.transactionHex) {
+    return recoveryRequest.transactionHex;
   }
-  if (recoveryRequest.tx){
-    return recoveryRequest.tx
+  if (recoveryRequest.tx) {
+    return recoveryRequest.tx;
   }
-  throw new Error("The recovery request did not provide a transaction hex");
-}
+  throw new Error('The recovery request did not provide a transaction hex');
+};
 
-const handleSign = function(args) {
+const handleSign = co(function *(args) {
   const file = args.file;
 
   const recoveryRequest = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
-  let coin = recoveryRequest.coin;
+  const coin = statics.coins.get(recoveryRequest.coin);
 
-  if (coin.startsWith('t')) {
+  if (coin.network.type === 'testnet') {
     bitgo = new bitgojs.BitGo({ env: 'test' });
   } else {
-    console.log('prod');
     bitgo = new bitgojs.BitGo({ env: 'prod' });
   }
 
-  if(!args.key) {
-    console.log("\nEnter your private key for signing.\nEnter an xprv or 24 words.\nIf entering 24 words, separate each word with only a comma and no spaces.\n");
-    args.key = prompt("Key: ");
+  if (!args.key) {
+    console.log('\nEnter your private key for signing.\nEnter an xprv or 24 words.'
+      + '\nIf entering 24 words, separate each word with only a comma and no spaces.\n');
+    args.key = prompt('Key: ');
   }
 
-  const key = parseKey(args.key, coin, args.path);
+  const key = yield parseKey(args.key, coin.name, args.path);
 
   let txHex, halfSignedInfo;
 
   // If a tokenContractAddress was provided, use that. Otherwise use the named coin
-  const basecoin = recoveryRequest.tokenContractAddress ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin);
+  const basecoin = recoveryRequest.tokenContractAddress
+    ? bitgo.coin(recoveryRequest.tokenContractAddress) : bitgo.coin(coin.name);
 
   switch (basecoin.getFamily()) {
     case 'eth':
       if (recoveryRequest.txPrebuild) {
-        halfSignedInfo = handleHalfSignEth(recoveryRequest, key, args.confirm, basecoin);
+        halfSignedInfo = yield handleHalfSignEth(recoveryRequest, key, args.confirm, basecoin);
       } else {
-        if (coin.getChain() === 'eth' || coin.getChain() === 'teth') {
+        if (coin.family === 'eth' && !coin.isToken) {
           txHex = handleSignEthereum(recoveryRequest, key, args.confirm);
         } else {
-          txHex = handleSignErc20(recoveryRequest, key, args.confirm, basecoin);
+          txHex = handleSignErc20(recoveryRequest, key, args.confirm);
         }
       }
       break;
     case 'eos':
       txHex = handleSignEos(recoveryRequest, key, args.confirm);
+      break;
+    case 'trx':
+      txHex = yield handleSignTrx(recoveryRequest, key, args.confirm);
       break;
     case 'xrp':
       txHex = handleSignXrp(recoveryRequest, key, args.confirm);
@@ -465,7 +510,7 @@ const handleSign = function(args) {
       break;
   }
 
-  if(txHex) {
+  if (txHex) {
     console.log(`Signed transaction hex: ${txHex}`);
   }
 
@@ -482,11 +527,12 @@ const handleSign = function(args) {
   }
 
   const fileStr = JSON.stringify(finalRecovery, null, 2);
-  if(!args.noWrite) {
+  if (!args.noWrite) {
     fs.writeFileSync(filename, fileStr);
     console.log('Done');
   }
   return finalRecovery;
-};
+});
 
-module.exports = { handleSign, handleSignUtxo, handleSignEthereum, handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, parseKey };
+module.exports = { handleSign, handleSignUtxo, handleSignEthereum,
+  handleSignXrp, handleSignXlm, handleSignErc20, handleSignEos, handleSignTrx, parseKey };

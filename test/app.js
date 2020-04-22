@@ -2,9 +2,6 @@ const testutils = require('./testutils');
 const request = require('supertest');
 const should = require('should');
 const server = require('../app/app')();
-const _ = require('lodash');
-const Promise = require('bluebird');
-const co = Promise.coroutine;
 
 const MasterKey = require('../app/models/masterkey');
 
@@ -15,8 +12,10 @@ describe('Application Server', function() {
     agent = request.agent(server);
 
     // Add one master key to the test database, to be provisioned later
-    const masterKey = new MasterKey({ pub: 'xpub68LYUvd1jGgRCLBHHjXtaaXRuYfRXsps9QFK3KoihrkieAX719fZLZoUApch11egYsjMyrL3WgrBRn2RxUS63sr7MTnQEYFKXoGr7nKwQfD', path: 'm/0\'', keyCount: 0, type: 'xpub' });
-    const xlmKey = new MasterKey({ pub: 'GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7', path: 'm/0\'', keyCount: 0, type: 'xlm' });
+    const masterKey = new MasterKey({ pub: 'xpub68LYUvd1jGgRCLBHHjXtaaXRuYfRXsps9QFK3KoihrkieAX719fZLZ'
+        + 'oUApch11egYsjMyrL3WgrBRn2RxUS63sr7MTnQEYFKXoGr7nKwQfD', path: 'm/0\'', keyCount: 0, type: 'xpub' });
+    const xlmKey = new MasterKey({ pub: 'GDTEG7J76FXO56P6VV74SVVMFMDT5QTVGKUPFE7QEKSMXD7SUFUNSWI7',
+      path: 'm/0\'', keyCount: 0, type: 'xlm' });
 
     masterKey.save();
     xlmKey.save();
@@ -43,7 +42,7 @@ describe('Application Server', function() {
         .post('/key')
         .send({
           customerId: 'enterprise-id',
-          coin: 'btc',
+          coin: 'btc'
         })
         .then(function (res) {
           res.status.should.eql(400);
@@ -59,7 +58,7 @@ describe('Application Server', function() {
         })
         .then(function (res) {
           res.status.should.eql(400);
-        })
+        });
     });
 
     it('no coin type', function () {
@@ -71,7 +70,7 @@ describe('Application Server', function() {
         })
         .then(function (res) {
           res.status.should.eql(400);
-        })
+        });
     });
 
     it('unsupported coin', function () {
@@ -95,7 +94,7 @@ describe('Application Server', function() {
           coin: 'btc',
           userEmail: 'test@example.com',
           custom: {
-            'anyCustomField': 'hello world'
+            anyCustomField: 'hello world'
           }
         })
         .end(function (err, res) {
@@ -131,7 +130,7 @@ describe('Application Server', function() {
           should.exist(res.body.custom);
           should.exist(res.body.custom.anyCustomField);
           res.body.custom.anyCustomField.should.equal('hello XLM');
-        })
-    })
+        });
+    });
   });
 });

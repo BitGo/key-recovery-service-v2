@@ -7,7 +7,7 @@ const masterKeySchema = new mongoose.Schema({
   customerId: { type: String },
   pub: { type: String },
   path: { type: String },
-  signature: {type: String},
+  signature: { type: String },
   keyCount: { type: Number }
 });
 
