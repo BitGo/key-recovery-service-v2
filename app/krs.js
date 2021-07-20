@@ -61,7 +61,7 @@ const provisionMasterKey = co(function *(coin, customerId) {
   const keyType = process.config.supportedcoins[coin];
 
   const key = yield MasterKey.findOneAndUpdate({ coin: null, customerId: null, type: keyType },
-    { coin: coin, customerId: customerId, type: keyType });
+    { coin: coin, customerId: customerId, type: keyType }, { useFindAndModify: false });
 
   if (!key) {
     throw utils.ErrorResponse(500, `no available ${keyType} keys`);
