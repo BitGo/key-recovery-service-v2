@@ -17,9 +17,12 @@ const WalletKey = require('./models/walletkey');
  * @param key: new wallet key document
  * @param state: 'created' when the key is first created
  */
-const notifyEndpoint = co(function *(key, state) {
-  const generateHMAC = function(xpub) {
-    const hmac = crypto.createHmac('sha256', process.config.provider.secret);
+const notifyEndpoint = co(function* (key, state) {
+  const generateHMAC = function (xpub) {
+    const hmac = crypto.createHmac(
+      'sha256',
+      process.config.provider.secret,
+    );
     hmac.update(xpub);
     return hmac.digest('hex');
   };
@@ -30,25 +33,25 @@ const notifyEndpoint = co(function *(key, state) {
   const hmac = generateHMAC(xpub);
 
   try {
-    yield request.post(notificationURL)
-      .send({
-        userEmail: userEmail,
-        provider: process.config.provider.id,
-        state: state,
-        xpub: xpub,
-        hmac: hmac
-      });
+    yield request.post(notificationURL).send({
+      userEmail: userEmail,
+      provider: process.config.provider.id,
+      state: state,
+      xpub: xpub,
+      hmac: hmac,
+    });
   } catch (e) {
     console.log('error connecting to webhook');
   }
 });
 
-const sendDatabaseLowWarning = co(function *(availableKeys, type) {
+const sendDatabaseLowWarning = co(function* (availableKeys, type) {
   yield utils.sendMailQ(
     process.config.adminemail,
     'URGENT: Please replenish the master key database',
     'databaselow',
-    { availableKeys, type });
+    { availableKeys, type },
+  );
 });
 
 /**
@@ -57,19 +60,29 @@ const sendDatabaseLowWarning = co(function *(availableKeys, type) {
  * @param coin: coin ticker (btc,eth,etc.)
  * @param customerId: customer ID from the platform
  */
-const provisionMasterKey = co(function *(coin, customerId) {
+const provisionMasterKey = co(function* (coin, customerId) {
   const keyType = process.config.supportedcoins[coin];
 
-  const key = yield MasterKey.findOneAndUpdate({ coin: null, customerId: null, type: keyType },
-    { coin: coin, customerId: customerId, type: keyType }, { useFindAndModify: false });
+  const key = yield MasterKey.findOneAndUpdate(
+    { coin: null, customerId: null, type: keyType },
+    { coin: coin, customerId: customerId, type: keyType },
+    { useFindAndModify: false },
+  );
 
   if (!key) {
     throw utils.ErrorResponse(500, `no available ${keyType} keys`);
   }
 
-  const availableKeys = yield MasterKey.countDocuments({ coin: null, customerId: null, type: keyType });
+  const availableKeys = yield MasterKey.countDocuments({
+    coin: null,
+    customerId: null,
+    type: keyType,
+  });
 
-  if (_.includes(process.config.lowKeyWarningLevels, availableKeys) && !process.config.disableAllKRSEmail) {
+  if (
+    _.includes(process.config.lowKeyWarningLevels, availableKeys) &&
+    !process.config.disableAllKRSEmail
+  ) {
     yield sendDatabaseLowWarning(availableKeys, keyType);
   }
 
@@ -82,8 +95,7 @@ const provisionMasterKey = co(function *(coin, customerId) {
  * @param customerId: user or enterprise ID from BitGo
  * @return {MasterKey} the master key to use for derivation
  */
-const getMasterXpub = co(function *(coin, customerId) {
-
+const getMasterXpub = co(function* (coin, customerId) {
   if (process.config.neverReuseMasterKey) {
     return provisionMasterKey(coin, customerId);
   }
@@ -103,7 +115,7 @@ const getMasterXpub = co(function *(coin, customerId) {
  * chain path, incrementing the keyCount on the master key
  * @param req: request object
  */
-exports.provisionKey = co(function *(req) {
+exports.provisionKey = co(function* (req) {
   const key = new WalletKey();
 
   const customerId = req.body.customerId;
@@ -125,12 +137,21 @@ exports.provisionKey = co(function *(req) {
     throw utils.ErrorResponse(400, 'email required');
   }
 
-  if (process.config.requesterAuth && process.config.requesterAuth.required) {
+  if (
+    process.config.requesterAuth &&
+    process.config.requesterAuth.required
+  ) {
     if (!req.body.requesterId && !req.body.requesterSecret) {
-      throw utils.ErrorResponse(401, 'this krs requires you to send a requesterId and requesterSecret to get a key');
+      throw utils.ErrorResponse(
+        401,
+        'this krs requires you to send a requesterId and requesterSecret to get a key',
+      );
     }
-    if (!process.config.requesterAuth.clients[req.body.requesterId]
-        || process.config.requesterAuth.clients[req.body.requesterId] !== req.body.requesterSecret) {
+    if (
+      !process.config.requesterAuth.clients[req.body.requesterId] ||
+      process.config.requesterAuth.clients[req.body.requesterId] !==
+        req.body.requesterSecret
+    ) {
       throw utils.ErrorResponse(401, 'invalid requesterSecret');
     }
   }
@@ -144,7 +165,11 @@ exports.provisionKey = co(function *(req) {
   } else {
     // find the correct master key (assigning if necessary), and derive a wallet key off of it
     masterKey = yield getMasterXpub(coin, customerId);
-    key.pub = utils.deriveChildKey(masterKey.pub, '' + masterKey.keyCount, 'xpub');
+    key.pub = utils.deriveChildKey(
+      masterKey.pub,
+      '' + masterKey.keyCount,
+      'xpub',
+    );
   }
 
   key.masterKey = masterKey.pub;
@@ -165,7 +190,10 @@ exports.provisionKey = co(function *(req) {
 
   yield masterKey.update({ $inc: { keyCount: 1 } });
 
-  if (!req.body.disableKRSEmail && !process.config.disableAllKRSEmail) {
+  if (
+    !req.body.disableKRSEmail &&
+    !process.config.disableAllKRSEmail
+  ) {
     try {
       yield utils.sendMailQ(
         key.userEmail,
@@ -176,8 +204,9 @@ exports.provisionKey = co(function *(req) {
           servicename: process.config.name,
           serviceurl: process.config.serviceurl,
           adminemail: process.config.adminemail,
-          useremail: key.userEmail
-        });
+          useremail: key.userEmail,
+        },
+      );
     } catch (e) {
       throw utils.ErrorResponse(503, 'Problem sending email');
     }
@@ -193,7 +222,7 @@ exports.provisionKey = co(function *(req) {
     userEmail: key.userEmail,
     custom: key.custom,
     masterKeySig: masterKey.signature,
-    pub: key.pub
+    pub: key.pub,
   };
 
   return response;

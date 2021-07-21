@@ -1,5 +1,5 @@
 process.config = require('../config');
-process.config.mongouri = process.env['MONGO_URI'] || 'mongodb://localhost:27019/key-recovery-service-test';
+process.config.mongouri = process.env['MONGO_URI'] || 'mongodb://localhost:27017/key-recovery-service-test';
 process.config.mail = undefined;
 
 const mongoose = require('../app/db');
