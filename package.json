@@ -18,7 +18,7 @@
     "supertest": "^3.3.0"
   },
   "dependencies": {
-    "@bitgo/account-lib": "1.1.0",
+    "@bitgo/account-lib": "^2.13.0",
     "@bitgo/statics": "^3.4.2",
     "argparse": "^1.0.10",
     "bignumber.js": "^7.2.1",
@@ -43,7 +43,7 @@
     "q": "^1.5.1",
     "ripple-binary-codec": "^0.1.13",
     "ripple-hashes": "^0.3.1",
-    "ripple-keypairs": "^0.10.1",
+    "ripple-keypairs": "^1.0.3",
     "ripple-lib": "^1.0.0-beta.5",
     "stellar-base": "^0.8.3",
     "stellar-hd-wallet": "0.0.10",
