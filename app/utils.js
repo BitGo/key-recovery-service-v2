@@ -5,7 +5,6 @@ const binary = require('ripple-binary-codec');
 const nodemailer = require('nodemailer');
 const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
-const prova = require('prova-lib');
 const utxoLib = require('bitgo-utxo-lib');
 const stellar = require('stellar-base');
 const stellarHd = require('stellar-hd-wallet');
@@ -151,8 +150,8 @@ exports.signXrpWithPrivateKey = function(txHex, privateKey, options) {
   if (privateKeyBuffer.length === 33 && privateKeyBuffer[0] === 0) {
     privateKeyBuffer = privateKeyBuffer.slice(1, 33);
   }
-  const privateKeyObject = prova.ECPair.fromPrivateKeyBuffer(privateKeyBuffer);
-  const publicKey = privateKeyObject.getPublicKeyBuffer().toString('hex').toUpperCase();
+  const ecPair = utxoLib.bitgo.keyutil.privateKeyBufferToECPair(privateKeyBuffer);
+  const publicKey = ecPair.getPublicKeyBuffer().toString('hex').toUpperCase();
 
   let tx;
   try {
