@@ -24,7 +24,7 @@
     "bignumber.js": "^7.2.1",
     "bitcoinjs-message": "^2.0.0",
     "bitgo": "^10.0.0",
-    "bitgo-utxo-lib": "^1.6.0",
+    "@bitgo/utxo-lib": "1.9.6",
     "body-parser": "^1.18.3",
     "dotenv": "^6.1.0",
     "eosjs": "^16.0.9",
