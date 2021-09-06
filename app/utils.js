@@ -1,3 +1,4 @@
+const bip32 = require('bip32');
 const Promise = require('bluebird');
 const co = Promise.coroutine;
 const Q = require('q');
@@ -110,7 +111,7 @@ function IsValidBip32Seed(input) {
 
 exports.deriveChildKey = function(master, derivationPath, type, neuter) {
   if (type === 'xpub' || type === 'xprv') {
-    const masterNode = utxolib.HDNode.fromBase58(master);
+    const masterNode = bip32.fromBase58(master);
     const childKey = masterNode.derivePath(derivationPath);
 
     if (neuter) {
