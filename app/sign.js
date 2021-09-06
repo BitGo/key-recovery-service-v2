@@ -1,6 +1,6 @@
 const Promise = require('bluebird');
 const co = Promise.coroutine;
-const utxoLib = require('bitgo-utxo-lib');
+const utxoLib = require('@bitgo/utxo-lib');
 const accountLib = require('@bitgo/account-lib');
 const statics = require('@bitgo/statics');
 const fs = require('fs');

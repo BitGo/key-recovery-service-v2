@@ -6,7 +6,7 @@ const nodemailer = require('nodemailer');
 const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
 const prova = require('prova-lib');
-const utxoLib = require('bitgo-utxo-lib');
+const utxolib = require('@bitgo/utxo-lib');
 const stellar = require('stellar-base');
 const stellarHd = require('stellar-hd-wallet');
 const rippleParse = require('ripple-binary-codec');
@@ -111,7 +111,7 @@ function IsValidBip32Seed(input) {
 
 exports.deriveChildKey = function(master, derivationPath, type, neuter) {
   if (type === 'xpub' || type === 'xprv') {
-    const masterNode = utxoLib.HDNode.fromBase58(master);
+    const masterNode = utxolib.HDNode.fromBase58(master);
     const childKey = masterNode.derivePath(derivationPath);
 
     if (neuter) {
