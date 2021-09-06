@@ -1,6 +1,6 @@
 const Promise = require('bluebird');
 const co = Promise.coroutine;
-const utxoLib = require('@bitgo/utxo-lib');
+const utxolib = require('@bitgo/utxo-lib');
 const accountLib = require('@bitgo/account-lib');
 const statics = require('@bitgo/statics');
 const fs = require('fs');
@@ -14,18 +14,18 @@ const bitgojs = require('bitgo');
 let bitgo;
 
 const utxoNetworks = {
-  btc: utxoLib.networks.bitcoin,
-  ltc: utxoLib.networks.litecoin,
-  bch: utxoLib.networks.bitcoincash,
-  bsv: utxoLib.networks.bitcoinsv,
-  zec: utxoLib.networks.zcash,
-  dash: utxoLib.networks.dash,
-  tltc: utxoLib.networks.litecoin,
-  tbtc: utxoLib.networks.testnet,
-  tbch: utxoLib.networks.bitcoincashTestnet,
-  tbsv: utxoLib.networks.bitcoinsvTestnet,
-  tzec: utxoLib.networks.zcashTest,
-  tdash: utxoLib.networks.dashTest
+  btc: utxolib.networks.bitcoin,
+  ltc: utxolib.networks.litecoin,
+  bch: utxolib.networks.bitcoincash,
+  bsv: utxolib.networks.bitcoinsv,
+  zec: utxolib.networks.zcash,
+  dash: utxolib.networks.dash,
+  tltc: utxolib.networks.litecoin,
+  tbtc: utxolib.networks.testnet,
+  tbch: utxolib.networks.bitcoincashTestnet,
+  tbsv: utxolib.networks.bitcoinsvTestnet,
+  tzec: utxolib.networks.zcashTest,
+  tdash: utxolib.networks.dashTest
 };
 
 const coinDecimals = {
@@ -90,7 +90,7 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
   let node;
 
   try {
-    node = utxoLib.HDNode.fromBase58(xprv);
+    node = utxolib.HDNode.fromBase58(xprv);
   } catch (e) {
     throw new Error('invalid private key');
   }
@@ -148,10 +148,10 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   }
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
-  const transaction = utxoLib.Transaction.fromHex(txHex, network);
+  const transaction = utxolib.Transaction.fromHex(txHex, network);
 
   const outputs = transaction.outs.map(out => ({
-    address: utxoLib.address.fromOutputScript(out.script, network),
+    address: utxolib.address.fromOutputScript(out.script, network),
     amount: ( new BN(out.value) ).div( TEN.pow(decimals) ).toString()
   }));
 
@@ -166,7 +166,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     transaction.ins[i].value = recoveryRequest.inputs[i].amount;
   });
 
-  const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
+  const txBuilder = utxolib.TransactionBuilder.fromTransaction(transaction, network);
 
   _.forEach(recoveryRequest.inputs, function(input, i) {
 
@@ -184,7 +184,7 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     if (BCH_COINS.includes(recoveryRequest.coin)) {
       const redeemScript = new Buffer(input.redeemScript, 'hex');
       txBuilder.sign(i, derivedHDNode.keyPair, redeemScript,
-        utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
+        utxolib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxolib.Transaction.SIGHASH_ALL, input.amount);
       // in a Lodash forEach loop, 'return' operates like 'continue' does
       // in a regular javascript loop. It finishes this iteration and moves to the next iteration
       return;
@@ -193,10 +193,10 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     // Handle Bech32
     if (!input.redeemScript) {
       const witnessScript = Buffer.from(input.witnessScript, 'hex');
-      const witnessScriptHash = utxoLib.crypto.sha256(witnessScript);
-      const prevOutScript = utxoLib.script.witnessScriptHash.output.encode(witnessScriptHash);
+      const witnessScriptHash = utxolib.crypto.sha256(witnessScript);
+      const prevOutScript = utxolib.script.witnessScriptHash.output.encode(witnessScriptHash);
       txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript,
-        utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+        utxolib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       return;
     }
 
@@ -205,12 +205,12 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     if (input.witnessScript) {
       const witnessScript = new Buffer(input.witnessScript, 'hex');
       txBuilder.sign(i, derivedHDNode.keyPair, redeemScript,
-        utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+        utxolib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       return;
     }
 
     // Handle all other requests
-    txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount);
+    txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxolib.Transaction.SIGHASH_ALL, input.amount);
   });
 
   return txBuilder.build().toHex();
@@ -421,7 +421,7 @@ const parseKey = co(function *(rawkey, coin, path) {
       throw new Error('Invalid mnemonic');
     }
     const seed = yield bip39.mnemonicToSeed(mnemonic);
-    let node = utxoLib.HDNode.fromSeedBuffer(seed);
+    let node = utxolib.HDNode.fromSeedBuffer(seed);
     if (path) {
       node = node.derivePath(path);
     }
@@ -431,7 +431,7 @@ const parseKey = co(function *(rawkey, coin, path) {
   }
   // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
   if (path) {
-    let node = utxoLib.HDNode.fromPrivateKeyBuffer(Buffer.from(rawkey, 'hex'));
+    let node = utxolib.HDNode.fromPrivateKeyBuffer(Buffer.from(rawkey, 'hex'));
     node = node.derivePath(path);
     return node.toBase58();
   }
