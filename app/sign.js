@@ -158,8 +158,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
 
   // force override network as we use btc mainnet xpubs for all utxo coins
   const backupKeyNode = Object.assign(
-      getHDNodeAndVerify(key, recoveryRequest.backupKey),
-      { network }
+    getHDNodeAndVerify(key, recoveryRequest.backupKey),
+    { network }
   );
 
   transaction.ins.forEach(function (input, i) {
