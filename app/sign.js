@@ -132,7 +132,7 @@ const promptForConfirmationAndKey = function(recoveryRequest, outputs, skipConfi
  * Gets the backup private key that can be used to sign the transaction.
  * @param xprv The provided extended private key (BIP32).
  * @param expectedXpub The public key specified with the request.
- * @returns Buffer - the private key buffer to sign the transaction.
+ * @returns {Buffer} - the private key buffer to sign the transaction.
  */
 const getBackupSigningKey = function(xprv, expectedXpub) {
   return getHDNodeAndVerify(xprv, expectedXpub).privateKey;
@@ -430,7 +430,7 @@ const parseKey = co(function *(rawkey, coin, path) {
 
   }
   if (path) {
-    throw new Error(`cannot derive key with path`)
+    throw new Error('can only derive subkey from bip32 xprv');
   }
   // if it doesn't have commas or a path, return unchanged input
   return rawkey;
