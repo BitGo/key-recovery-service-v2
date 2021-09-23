@@ -1,6 +1,7 @@
 const Promise = require('bluebird');
 const co = Promise.coroutine;
-const utxoLib = require('bitgo-utxo-lib');
+const bip32 = require('bip32');
+const utxolib = require('@bitgo/utxo-lib');
 const accountLib = require('@bitgo/account-lib');
 const statics = require('@bitgo/statics');
 const fs = require('fs');
@@ -14,18 +15,18 @@ const bitgojs = require('bitgo');
 let bitgo;
 
 const utxoNetworks = {
-  btc: utxoLib.networks.bitcoin,
-  ltc: utxoLib.networks.litecoin,
-  bch: utxoLib.networks.bitcoincash,
-  bsv: utxoLib.networks.bitcoinsv,
-  zec: utxoLib.networks.zcash,
-  dash: utxoLib.networks.dash,
-  tltc: utxoLib.networks.litecoin,
-  tbtc: utxoLib.networks.testnet,
-  tbch: utxoLib.networks.bitcoincashTestnet,
-  tbsv: utxoLib.networks.bitcoinsvTestnet,
-  tzec: utxoLib.networks.zcashTest,
-  tdash: utxoLib.networks.dashTest
+  btc: utxolib.networks.bitcoin,
+  ltc: utxolib.networks.litecoin,
+  bch: utxolib.networks.bitcoincash,
+  bsv: utxolib.networks.bitcoinsv,
+  zec: utxolib.networks.zcash,
+  dash: utxolib.networks.dash,
+  tltc: utxolib.networks.litecoin,
+  tbtc: utxolib.networks.testnet,
+  tbch: utxolib.networks.bitcoincashTestnet,
+  tbsv: utxolib.networks.bitcoinsvTestnet,
+  tzec: utxolib.networks.zcashTest,
+  tdash: utxolib.networks.dashTest
 };
 
 const coinDecimals = {
@@ -90,7 +91,7 @@ const getHDNodeAndVerify = function(xprv, expectedXpub) {
   let node;
 
   try {
-    node = utxoLib.HDNode.fromBase58(xprv);
+    node = bip32.fromBase58(xprv);
   } catch (e) {
     throw new Error('invalid private key');
   }
@@ -131,12 +132,10 @@ const promptForConfirmationAndKey = function(recoveryRequest, outputs, skipConfi
  * Gets the backup private key that can be used to sign the transaction.
  * @param xprv The provided extended private key (BIP32).
  * @param expectedXpub The public key specified with the request.
- * @returns The private key to sign the transaction.
+ * @returns {Buffer} - the private key buffer to sign the transaction.
  */
 const getBackupSigningKey = function(xprv, expectedXpub) {
-  const backupKeyNode = getHDNodeAndVerify(xprv, expectedXpub);
-
-  return backupKeyNode.keyPair.getPrivateKeyBuffer();
+  return getHDNodeAndVerify(xprv, expectedXpub).privateKey;
 };
 
 const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
@@ -148,25 +147,26 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
   }
 
   const txHex = getTransactionHexFromRequest(recoveryRequest);
-  const transaction = utxoLib.Transaction.fromHex(txHex, network);
+  const transaction = utxolib.Transaction.fromHex(txHex, network);
 
   const outputs = transaction.outs.map(out => ({
-    address: utxoLib.address.fromOutputScript(out.script, network),
+    address: utxolib.address.fromOutputScript(out.script, network),
     amount: ( new BN(out.value) ).div( TEN.pow(decimals) ).toString()
   }));
 
   key = promptForConfirmationAndKey(recoveryRequest, outputs, skipConfirm, key);
 
-  const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
-
   // force override network as we use btc mainnet xpubs for all utxo coins
-  backupKeyNode.keyPair.network = network;
+  const backupKeyNode = Object.assign(
+    getHDNodeAndVerify(key, recoveryRequest.backupKey),
+    { network }
+  );
 
   transaction.ins.forEach(function (input, i) {
     transaction.ins[i].value = recoveryRequest.inputs[i].amount;
   });
 
-  const txBuilder = utxoLib.TransactionBuilder.fromTransaction(transaction, network);
+  const txBuilder = utxolib.TransactionBuilder.fromTransaction(transaction, network);
 
   _.forEach(recoveryRequest.inputs, function(input, i) {
 
@@ -183,8 +183,8 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     // Handle BCH
     if (BCH_COINS.includes(recoveryRequest.coin)) {
       const redeemScript = new Buffer(input.redeemScript, 'hex');
-      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript,
-        utxoLib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxoLib.Transaction.SIGHASH_ALL, input.amount);
+      txBuilder.sign(i, derivedHDNode, redeemScript,
+        utxolib.Transaction.SIGHASH_BITCOINCASHBIP143 | utxolib.Transaction.SIGHASH_ALL, input.amount);
       // in a Lodash forEach loop, 'return' operates like 'continue' does
       // in a regular javascript loop. It finishes this iteration and moves to the next iteration
       return;
@@ -193,10 +193,10 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     // Handle Bech32
     if (!input.redeemScript) {
       const witnessScript = Buffer.from(input.witnessScript, 'hex');
-      const witnessScriptHash = utxoLib.crypto.sha256(witnessScript);
-      const prevOutScript = utxoLib.script.witnessScriptHash.output.encode(witnessScriptHash);
-      txBuilder.sign(i, derivedHDNode.keyPair, prevOutScript,
-        utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+      const witnessScriptHash = utxolib.crypto.sha256(witnessScript);
+      const prevOutScript = utxolib.script.witnessScriptHash.output.encode(witnessScriptHash);
+      txBuilder.sign(i, derivedHDNode, prevOutScript,
+        utxolib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       return;
     }
 
@@ -204,13 +204,13 @@ const handleSignUtxo = function(recoveryRequest, key, skipConfirm) {
     const redeemScript = new Buffer(input.redeemScript, 'hex');
     if (input.witnessScript) {
       const witnessScript = new Buffer(input.witnessScript, 'hex');
-      txBuilder.sign(i, derivedHDNode.keyPair, redeemScript,
-        utxoLib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
+      txBuilder.sign(i, derivedHDNode, redeemScript,
+        utxolib.Transaction.SIGHASH_ALL, input.amount, witnessScript);
       return;
     }
 
     // Handle all other requests
-    txBuilder.sign(i, derivedHDNode.keyPair, redeemScript, utxoLib.Transaction.SIGHASH_ALL, input.amount);
+    txBuilder.sign(i, derivedHDNode, redeemScript, utxolib.Transaction.SIGHASH_ALL, input.amount);
   });
 
   return txBuilder.build().toHex();
@@ -347,8 +347,8 @@ const handleSignXrp = function(recoveryRequest, key, skipConfirm) {
 
   const backupKeyNode = getHDNodeAndVerify(key, recoveryRequest.backupKey);
 
-  const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.keyPair.getPublicKeyBuffer().toString('hex'));
-  const privateKeyHex = backupKeyNode.keyPair.getPrivateKeyBuffer().toString('hex');
+  const backupAddress = rippleKeypairs.deriveAddress(backupKeyNode.publicKey.toString('hex'));
+  const privateKeyHex = backupKeyNode.privateKey.toString('hex');
   const cosignedTx = utils.signXrpWithPrivateKey(txHex, privateKeyHex, { signAs: backupAddress });
 
   return rippleApi.combine([txHex, cosignedTx.signedTransaction]).signedTransaction;
@@ -421,7 +421,7 @@ const parseKey = co(function *(rawkey, coin, path) {
       throw new Error('Invalid mnemonic');
     }
     const seed = yield bip39.mnemonicToSeed(mnemonic);
-    let node = utxoLib.HDNode.fromSeedBuffer(seed);
+    let node = bip32.fromSeed(seed);
     if (path) {
       node = node.derivePath(path);
     }
@@ -429,12 +429,10 @@ const parseKey = co(function *(rawkey, coin, path) {
     return xprv;
 
   }
-  // if it doesn't have commas, we expect it is an xprv or xlmsecret properly formatted
   if (path) {
-    let node = utxoLib.HDNode.fromPrivateKeyBuffer(Buffer.from(rawkey, 'hex'));
-    node = node.derivePath(path);
-    return node.toBase58();
+    throw new Error('can only derive subkey from bip32 xprv');
   }
+  // if it doesn't have commas or a path, return unchanged input
   return rawkey;
 });
 

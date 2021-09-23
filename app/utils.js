@@ -1,3 +1,4 @@
+const bip32 = require('bip32');
 const Promise = require('bluebird');
 const co = Promise.coroutine;
 const Q = require('q');
@@ -5,8 +6,7 @@ const binary = require('ripple-binary-codec');
 const nodemailer = require('nodemailer');
 const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
-const prova = require('prova-lib');
-const utxoLib = require('bitgo-utxo-lib');
+const utxolib = require('@bitgo/utxo-lib');
 const stellar = require('stellar-base');
 const stellarHd = require('stellar-hd-wallet');
 const rippleParse = require('ripple-binary-codec');
@@ -111,7 +111,7 @@ function IsValidBip32Seed(input) {
 
 exports.deriveChildKey = function(master, derivationPath, type, neuter) {
   if (type === 'xpub' || type === 'xprv') {
-    const masterNode = utxoLib.HDNode.fromBase58(master);
+    const masterNode = bip32.fromBase58(master);
     const childKey = masterNode.derivePath(derivationPath);
 
     if (neuter) {
@@ -151,7 +151,7 @@ exports.signXrpWithPrivateKey = function(txHex, privateKey, options) {
   if (privateKeyBuffer.length === 33 && privateKeyBuffer[0] === 0) {
     privateKeyBuffer = privateKeyBuffer.slice(1, 33);
   }
-  const privateKeyObject = prova.ECPair.fromPrivateKeyBuffer(privateKeyBuffer);
+  const privateKeyObject = utxolib.bitgo.keyutil.privateKeyBufferToECPair(privateKeyBuffer);
   const publicKey = privateKeyObject.getPublicKeyBuffer().toString('hex').toUpperCase();
 
   let tx;
