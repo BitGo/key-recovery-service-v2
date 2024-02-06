@@ -37,7 +37,7 @@
     "lodash": "^4.17.11",
     "mongoose": "^5.13.20",
     "morgan": "^1.9.1",
-    "nodemailer": "^4.6.7",
+    "nodemailer": "^6.9.9",
     "nodemailer-smtp-transport": "^2.7.4",
     "prompt-sync": "^4.1.6",
     "q": "^1.5.1",
