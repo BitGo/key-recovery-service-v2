@@ -26,7 +26,7 @@ const subparsers = parser.addSubparsers({
 
 const importKeys = subparsers.addParser('import', { addHelp: true });
 importKeys.addArgument(
-  [ 'file' ],
+  ['file'],
   {
     action: 'store',
     help: 'path to a list of public keys generated from admin.js generate'
@@ -59,12 +59,12 @@ signCommand.addArgument(
   }
 );
 signCommand.addArgument(
-    ['--path'],
-    {
-        action: 'store',
-        required: false,
-        help: 'optional derivation path to derive from the given key'
-    }
+  ['--path'],
+  {
+    action: 'store',
+    required: false,
+    help: 'optional derivation path to derive from the given key'
+  }
 );
 signCommand.addArgument(
   ['--confirm'],
@@ -161,20 +161,20 @@ generateKeysCommand.addArgument(
 
 subparsers.addParser('seed', {
   addHelp: true,
-  description: 'Generates a cryptographically secure random seed to be used for Stellar key derivation.\n' +
-    'Note: To generate a master key for non-Stellar coins, please install BitGo CLI and run "bitgo newkey"'
+  description: 'Generates a cryptographically secure random seed to be used for Stellar key derivation.\n'
+    + 'Note: To generate a master key for non-Stellar coins, please install BitGo CLI and run "bitgo newkey"'
 });
 
 const deriveKeyCommand = subparsers.addParser('derive', { addHelp: true });
 deriveKeyCommand.addArgument(
-  [ 'master' ],
+  ['master'],
   {
     action: 'store',
     help: 'xpub of the master key (starts with "xpub")'
   }
 );
 deriveKeyCommand.addArgument(
-  [ 'path' ],
+  ['path'],
   {
     action: 'store',
     help: 'derivation path of the wallet key (starts with "m/")'
@@ -208,7 +208,7 @@ const validateKey = function(key, type) {
   if (process.config.verificationPub) {
 
     if (!key.signature) {
-      console.log(`Key ${key.pub} requires a signature and does not have one.`);
+      console.log(`Key ${key.pub} has a verification public key but no signature.`);
       return false;
     }
 
@@ -230,7 +230,8 @@ const validateKey = function(key, type) {
 };
 
 const saveKeys = co(function *(keys, type) {
-  // this extracts the possible values directly from the Mongoose schema, which is considered the most accurate set of possible values
+  // this extracts the possible values directly from the Mongoose schema,
+  // which is considered the most accurate set of possible values
   const validTypes = MasterKey.schema.path('type').enumValues;
 
   if (!validTypes.includes(type)) {
@@ -246,7 +247,7 @@ const saveKeys = co(function *(keys, type) {
       path: key.path,
       signature: key.signature,
       keyCount: 0
-  }));
+    }));
 
   if (keyDocs.length === 0) {
     console.log('No valid public keys. Please re-generate and try again.');
@@ -265,7 +266,8 @@ const saveKeys = co(function *(keys, type) {
     console.log(`New capacity: ${availableKeys} available ${type} keys out of ${totalKeys} total ${type} keys.`);
   } catch (e) {
     console.log(e.message);
-    console.log('FAILED to import all public keys. This is usually caused by trying to import a public key that already exists in the database.');
+    console.log('FAILED to import all public keys. '
+      + 'This is usually caused by trying to import a public key that already exists in the database.');
   }
 });
 
@@ -277,7 +279,9 @@ const handleImportKeys = co(function *(args) {
     throw new Error('please specify the path to a CSV file containing the public keys to import');
   }
 
-  let keys = JSON.parse(fs.readFileSync(path, { encoding: 'utf8' }));
+  const file = yield fs.readFile(path, { encoding: 'utf8' });
+
+  let keys = JSON.parse(file);
 
   keys = formatKeysByType(keys, type);
 
@@ -294,7 +298,8 @@ const handleImportKeys = co(function *(args) {
  *   xlmSignature: "KOPASIK------PSDIFAPSDFOAF"
  *   path: "100"
  * }
- * If this key comes in, we can save it either as type xpub or xlm (depending on what the admin specifies on the command line)
+ * If this key comes in, we can save it either as type xpub or xlm
+ * (depending on what the admin specifies on the command line)
  * If the above key is imported as type 'xlm', we will change it to the following format:
  * {
  *   pub: "GSLKJASDFJASLFASDFAS"
@@ -316,9 +321,9 @@ const formatKeysByType = function(keys, type) {
       signature: type === 'xlm' ? key.xlmSignature : key.signature,
       path: key.path
     });
-  })
+  });
   return formattedkeys;
-}
+};
 
 const handleDeriveKey = function(args) {
   try {
@@ -364,7 +369,7 @@ const handleVerificationGet = co(function *(args) {
   }
 
   if (_.isUndefined(key.verificationInfo)) {
-    key.verificationInfo = '<N/A>'
+    key.verificationInfo = '<N/A>';
   }
 
   // if there are multiple lines, this aligns each line under the first line
@@ -411,7 +416,7 @@ const handleVerification = co(function *(args) {
   }
 });
 
-const handleRecoveryInfo = co(function *(args){
+const handleRecoveryInfo = co(function *(args) {
   const json = JSON.parse(fs.readFileSync(args.file));
   const pub = json.backupKey;
   const walletkey = yield WalletKey.findOne({ pub });
@@ -419,7 +424,7 @@ const handleRecoveryInfo = co(function *(args){
   json.masterkey = masterkey.pub;
   json.masterkeypath = masterkey.path;
   json.walletkeypath = walletkey.path;
-  const filename = args.file.substring(0,args.file.length - 5) + '-prepared.json';
+  const filename = args.file.substring(0, args.file.length - 5) + '-prepared.json';
   console.log('got info... writing file ' + filename);
   fs.writeFileSync(filename, JSON.stringify(json, null, 2));
   console.log('done.');
@@ -429,7 +434,7 @@ const requireDB = function() {
   MasterKey = require('./models/masterkey.js');
   WalletKey = require('./models/walletkey.js');
   db = require('./db.js');
-}
+};
 
 const run = co(function *(testArgs) {
   const args = parser.parseArgs(testArgs);
@@ -440,7 +445,7 @@ const run = co(function *(testArgs) {
       yield handleImportKeys(args);
       break;
     case 'sign':
-      signingTool.handleSign(args);
+      yield signingTool.handleSign(args);
       break;
     case 'derive':
       handleDeriveKey(args);
@@ -466,4 +471,4 @@ const run = co(function *(testArgs) {
 });
 
 // For admin script and unit testing of functions
-module.exports = { run, validateKey, saveKeys, db , requireDB };
+module.exports = { run, validateKey, saveKeys, db, requireDB };

@@ -18,7 +18,7 @@ const WalletKey = require('./models/walletkey');
  * @param state: 'created' when the key is first created
  */
 const notifyEndpoint = co(function *(key, state) {
-  const generateHMAC = function(xpub){
+  const generateHMAC = function(xpub) {
     const hmac = crypto.createHmac('sha256', process.config.provider.secret);
     hmac.update(xpub);
     return hmac.digest('hex');
@@ -37,7 +37,7 @@ const notifyEndpoint = co(function *(key, state) {
         state: state,
         xpub: xpub,
         hmac: hmac
-      })
+      });
   } catch (e) {
     console.log('error connecting to webhook');
   }
@@ -60,7 +60,8 @@ const sendDatabaseLowWarning = co(function *(availableKeys, type) {
 const provisionMasterKey = co(function *(coin, customerId) {
   const keyType = process.config.supportedcoins[coin];
 
-  const key = yield MasterKey.findOneAndUpdate({ coin: null, customerId: null, type: keyType }, { coin: coin, customerId: customerId, type: keyType });
+  const key = yield MasterKey.findOneAndUpdate({ coin: null, customerId: null, type: keyType },
+    { coin: coin, customerId: customerId, type: keyType }, { useFindAndModify: false });
 
   if (!key) {
     throw utils.ErrorResponse(500, `no available ${keyType} keys`);
@@ -83,7 +84,7 @@ const provisionMasterKey = co(function *(coin, customerId) {
  */
 const getMasterXpub = co(function *(coin, customerId) {
 
-  if(process.config.neverReuseMasterKey) {
+  if (process.config.neverReuseMasterKey) {
     return provisionMasterKey(coin, customerId);
   }
 
@@ -128,8 +129,8 @@ exports.provisionKey = co(function *(req) {
     if (!req.body.requesterId && !req.body.requesterSecret) {
       throw utils.ErrorResponse(401, 'this krs requires you to send a requesterId and requesterSecret to get a key');
     }
-    if (!process.config.requesterAuth.clients[req.body.requesterId] ||
-        process.config.requesterAuth.clients[req.body.requesterId] !== req.body.requesterSecret) {
+    if (!process.config.requesterAuth.clients[req.body.requesterId]
+        || process.config.requesterAuth.clients[req.body.requesterId] !== req.body.requesterSecret) {
       throw utils.ErrorResponse(401, 'invalid requesterSecret');
     }
   }
@@ -193,7 +194,7 @@ exports.provisionKey = co(function *(req) {
     custom: key.custom,
     masterKeySig: masterKey.signature,
     pub: key.pub
-  }
+  };
 
   return response;
 });
