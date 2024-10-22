@@ -1,9 +1,12 @@
+const bip32 = require('bip32');
+const Promise = require('bluebird');
+const co = Promise.coroutine;
 const Q = require('q');
+const binary = require('ripple-binary-codec');
 const nodemailer = require('nodemailer');
 const smtpTransport = require('nodemailer-smtp-transport');
 const jsrender = require('jsrender');
-const prova = require('prova-lib');
-const utxoLib = require('bitgo-utxo-lib');
+const utxolib = require('@bitgo/utxo-lib');
 const stellar = require('stellar-base');
 const stellarHd = require('stellar-hd-wallet');
 const rippleParse = require('ripple-binary-codec');
@@ -31,7 +34,7 @@ exports.promiseWrapper = function(promiseRequestHandler) {
   return function (req, res, next) {
     Q.fcall(promiseRequestHandler, req, res, next)
     .then(function (result) {
-      var status = 200;
+      let status = 200;
       if (result.__redirect) {
         res.redirect(result.url);
         status = 302;
@@ -46,9 +49,9 @@ exports.promiseWrapper = function(promiseRequestHandler) {
       if (caught instanceof Error) {
         err = caught;
       } else if (typeof caught === 'string') {
-        err = new Error("(string_error) " + caught);
+        err = new Error('(string_error) ' + caught);
       } else {
-        err = new Error("(object_error) " + JSON.stringify(caught));
+        err = new Error('(object_error) ' + JSON.stringify(caught));
       }
 
       const message = err.message || 'local error';
@@ -74,7 +77,7 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
   }
 
   // setup e-mail data with unicode symbols
-  var mailOptions = {
+  const mailOptions = {
     from: process.config.mail.fromemail,
     to: toEmail,
     subject: subject, // Subject line
@@ -87,6 +90,16 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
   return sendMail(mailOptions);
 };
 
+/*
+ * Check if input is a valid seed input formatted as a hex string.
+ * Cf. the BIP32 specification, a valid seed is between 128 bits and 512 bits (both included),
+ * i.e. between 16 and 64 bytes.
+ * https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#master-key-generation
+ */
+function IsValidBip32Seed(input) {
+  return input.match(/^(([0-9a-f]{2}){16,64})$/);
+}
+
 /** deriveChildKey
  *
  * returns the derived key as a string
@@ -98,7 +111,7 @@ exports.sendMailQ = function(toEmail, subject, template, templateParams, attachm
 
 exports.deriveChildKey = function(master, derivationPath, type, neuter) {
   if (type === 'xpub' || type === 'xprv') {
-    const masterNode = utxoLib.HDNode.fromBase58(master);
+    const masterNode = bip32.fromBase58(master);
     const childKey = masterNode.derivePath(derivationPath);
 
     if (neuter) {
@@ -107,10 +120,16 @@ exports.deriveChildKey = function(master, derivationPath, type, neuter) {
 
     return childKey.toBase58();
   } else if (type === 'xlm') {
+
+    // Verify that input is a valid seed, cf. SEP05 (Stellar Ecosystem Proposals 5) which follows BIP39
+    // which is based on BIP32:
+    // https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md
+    if (!IsValidBip32Seed(master)) { throw new Error(`Invalid seed. Got: ${master}`); }
+
     const masterNode = stellarHd.fromSeed(master);
     const childKey = stellar.Keypair.fromRawEd25519Seed(masterNode.derive(derivationPath));
 
-    if(neuter) {
+    if (neuter) {
       return childKey.publicKey();
     }
 
@@ -120,8 +139,8 @@ exports.deriveChildKey = function(master, derivationPath, type, neuter) {
 
 // Ripple signing functions from BitGoJS
 exports.computeSignature = function(tx, privateKey, signAs) {
-  const signingData = signAs ?
-    rippleParse.encodeForMultisigning(tx, signAs) : binary.encodeForSigning(tx);
+  const signingData = signAs
+    ? rippleParse.encodeForMultisigning(tx, signAs) : binary.encodeForSigning(tx);
   return rippleKeypairs.sign(signingData, privateKey);
 };
 
@@ -132,7 +151,7 @@ exports.signXrpWithPrivateKey = function(txHex, privateKey, options) {
   if (privateKeyBuffer.length === 33 && privateKeyBuffer[0] === 0) {
     privateKeyBuffer = privateKeyBuffer.slice(1, 33);
   }
-  const privateKeyObject = prova.ECPair.fromPrivateKeyBuffer(privateKeyBuffer);
+  const privateKeyObject = utxolib.bitgo.keyutil.privateKeyBufferToECPair(privateKeyBuffer);
   const publicKey = privateKeyObject.getPublicKeyBuffer().toString('hex').toUpperCase();
 
   let tx;
@@ -170,7 +189,7 @@ exports.signXrpWithPrivateKey = function(txHex, privateKey, options) {
   };
 };
 
-exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
+exports.halfSignEthTransaction = co(function *(basecoin, recoveryRequest, key) {
   const txPrebuild = recoveryRequest.txPrebuild;
   const obj = {
     prv: key,
@@ -179,10 +198,10 @@ exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
     expireTime: txPrebuild.expireTime,
     txPrebuild
   };
-  const signedtx = basecoin.signTransaction(obj);
+  const signedtx = yield basecoin.signTransaction(obj);
   const outFile = {
     txInfo: signedtx.halfSigned
-  }
+  };
   outFile.txInfo.recipient = outFile.txInfo.recipients[0];
   delete outFile.txInfo.recipients;
   outFile.txInfo.clientSignature = outFile.txInfo.signature;
@@ -192,7 +211,7 @@ exports.halfSignEthTransaction = function(basecoin, recoveryRequest, key) {
     outFile.tokenContractAddress = recoveryRequest.tokenContractAddress;
   }
   return outFile;
-}
+});
 
 
 /**
@@ -224,7 +243,7 @@ exports.deserializeEOSTransaction = function(EosJs, serializedTransaction) {
   const serializedTransferDataBuffer = Buffer.from(txAction.data, 'hex');
   const transferActionData = EosJs.modules.Fcbuffer.fromBuffer(transferStruct, serializedTransferDataBuffer);
   transaction.address = transferActionData.to;
-  transaction.amount = transferActionData.quantity.split(' ')[0];;
+  transaction.amount = transferActionData.quantity.split(' ')[0];
   return { recipient: transaction.address, amount: transaction.amount };
 };
 
@@ -237,7 +256,7 @@ exports.getEOSSignatureData = function(tx, chainId) {
   return Buffer.concat([
     Buffer.from(chainId, 'hex'),              // The ChainID representing the chain that we are on
     Buffer.from(tx, 'hex'),                   // The serialized unsigned tx
-    Buffer.from(new Uint8Array(32)),  // Some padding
+    Buffer.from(new Uint8Array(32))  // Some padding
   ]).toString('hex');
 };
 
